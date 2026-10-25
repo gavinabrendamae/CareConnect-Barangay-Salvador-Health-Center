@@ -14,30 +14,30 @@ const SERVICES = [
     body: "Confidential family planning counseling and method tracking for residents. Health workers can record consultations and follow-up schedules while keeping each patient's information private and secure." },
   { key: 'senior', icon: 'bi-person-walking', title: 'Senior Citizen', short: 'Dedicated monitoring and care programs for elderly residents.',
     body: 'Dedicated monitoring for elderly residents, including routine wellness checks and management of common conditions such as hypertension and diabetes. Staff can flag seniors who need priority follow-up or home visits.' },
+  { key: 'tbdots', icon: 'bi-lungs', title: 'TB DOTS', short: 'Directly observed treatment and monitoring for TB patients.',
+    body: 'Directly Observed Treatment, Short-course for TB patients. Daily dose intake is logged by health workers to make sure patients complete their full treatment course, with automatic tracking of missed doses.' },
   { key: 'consultation', icon: 'bi-clipboard2-pulse', title: 'General Consultation', short: 'Walk-in and scheduled consultations for common illnesses.',
     body: 'Walk-in and scheduled consultations for common illnesses such as fever, cough, and colds. Every visit is recorded with vitals, diagnosis, and prescribed treatment, building a complete health record over time.' },
 ];
 
 const SPECIALISTS = [
-  { initials: 'BM', name: 'Brenda Mae Gavina', role: 'Midwife' },
-  { initials: 'JB', name: 'Joan Baldonado', purok: 'Purok 1', role: 'Health Worker' },
+  { initials: 'MR', name: 'Maria Reyes', purok: 'Purok 1', role: 'Health Worker' },
   { initials: 'JC', name: 'Jose Cruz', purok: 'Purok 2', role: 'Health Worker' },
   { initials: 'AS', name: 'Ana Santos', purok: 'Purok 3', role: 'Health Worker' },
   { initials: 'RB', name: 'Rico Bautista', purok: 'Purok 4', role: 'Health Worker' },
-  { initials: 'LT', name: 'Liza Torres', purok: 'Purok 5', role: 'Health Worker' },
+  { initials: 'LT', name: 'Liza Torres', purok: 'Purok 5', role: 'Midwife' },
   { initials: 'EM', name: 'Edwin Mendoza', purok: 'Purok 6', role: 'Health Worker' },
-  { initials: 'CS', name: 'Clara Sarmiento', purok: 'Purok 7', role: 'Health Worker' },
 ];
 
 const FAQS = [
-  { q: 'Ano ang oras ng bukas ng Health Center?', a: 'Bukas ang Health Center tuwing Lunes hanggang Biyernes, 8:00 AM hanggang 5:00 PM.', img: '/Resources/faq1.jpg' },
-  { q: 'Saan ang location ng Health Center?', a: 'Matatagpuan ang Health Center sa loob ng barangay hall complex. Makikita ang eksaktong address sa Contact page.', img: '/Resources/faq2.jpg' },
-  { q: 'Paano ako makakapag-register sa system?', a: 'I-click ang "Join us Now" o "Login" button sa itaas, at sundan ang mga hakbang sa registration form o magtungo sa Health Center para sa direktang pagpaparegistro.', img: '/Resources/faq3.jpg' },
-  { q: 'Sino ang pwede kong tawagan kung may concern ako?', a: 'Maaari kang tumawag o pumunta sa Health Center front desk, o makipag-ugnayan sa numero na nasa Contact page.', img: '/Resources/faq4.jpg' },
-  { q: 'Anong mga services ang offer ng Health Center?', a: 'Vaccination, prenatal care, family planning, senior citizen program, TB-DOTS, at general consultation.', img: '/Resources/faq5.jpg' },
-  { q: 'Libre po ba ang mga serbisyo?', a: 'Karamihan sa mga batayang serbisyo ng Health Center ay libre para sa mga rehistradong residente.', img: '/Resources/faq6.jpg' },
-  { q: 'Anong mga sakit ang pwedeng ipatingin?', a: 'Karamihan sa karaniwang sakit gaya ng lagnat, ubo, sipon, at iba pang minor illnesses ay maaaring ipatingin.', img: '/Resources/faq7.jpg' },
-  { q: 'May libreng gamot ba sa Health Center?', a: 'May mga available na libreng gamot depende sa uri ng sakit at kasalukuyang supply ng Health Center. I-click ang Medicines sa itaas upang makita ang mga gamot na iniaalok ng Health Center.', img: '/Resources/faq8.jpg' },
+  { q: 'Ano ang oras ng bukas ng Health Center?', a: 'Bukas ang Health Center tuwing Lunes hanggang Biyernes, 8:00 AM hanggang 5:00 PM.', img: `${import.meta.env.BASE_URL}Resources/faq1.jpg` },
+  { q: 'Saan ang location ng Health Center?', a: 'Matatagpuan ang Health Center sa loob ng barangay hall complex. Makikita ang eksaktong address sa Contact page.', img: `${import.meta.env.BASE_URL}Resources/faq2.jpg` },
+  { q: 'Paano ako makakapag-register sa system?', a: 'I-click ang "Join us Now" o "Login" button sa itaas, at sundan ang mga hakbang sa registration form.', img: `${import.meta.env.BASE_URL}Resources/faq3.jpg` },
+  { q: 'Sino ang pwede kong tawagan kung may concern ako?', a: 'Maaari kang tumawag o pumunta sa Health Center front desk, o makipag-ugnayan sa numero na nasa Contact page.', img: `${import.meta.env.BASE_URL}Resources/faq4.jpg` },
+  { q: 'Anong mga services ang offer ng Health Center?', a: 'Vaccination, prenatal care, family planning, senior citizen program, TB-DOTS, at general consultation.', img: `${import.meta.env.BASE_URL}Resources/faq5.jpg` },
+  { q: 'Libre po ba ang mga serbisyo?', a: 'Karamihan sa mga batayang serbisyo ng Health Center ay libre para sa mga rehistradong residente.', img: `${import.meta.env.BASE_URL}Resources/faq6.jpg` },
+  { q: 'Anong mga sakit ang pwedeng ipatingin?', a: 'Karamihan sa karaniwang sakit gaya ng lagnat, ubo, sipon, at iba pang minor illnesses ay maaaring ipatingin.', img: `${import.meta.env.BASE_URL}Resources/faq7.jpg` },
+  { q: 'May libreng gamot ba sa Health Center?', a: 'May mga available na libreng gamot depende sa uri ng sakit at kasalukuyang supply ng Health Center. I-click ang Medicines sa itaas upang makita ang mga gamot na iniaalok ng Health Center.', img: `${import.meta.env.BASE_URL}Resources/faq8.jpg` },
 ];
 
 const PAGE_SIZE = 4;
@@ -180,7 +180,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="col-lg-5">
-              <div className="faq-visual" style={{ backgroundImage: `url('${faqImg}')` }} />
+              <div className="faq-visual" style={{ backgroundImage: `url('${import.meta.env.BASE_URL}${faqImg.replace(/^\//, '')}')` }} />
             </div>
           </div>
         </div>
