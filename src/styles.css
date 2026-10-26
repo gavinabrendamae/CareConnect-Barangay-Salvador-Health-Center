@@ -316,7 +316,6 @@ body.theme-light .ann-section{ color:#2b78b8; }
   .dash-sidebar .nav-link:hover, .dash-tabs .nav-link:hover{ transform:none; }
 }
 
-/* Hover: FAQ items and the top menu links */
 .accordion-item, .navbar .nav-link{ transition: transform .2s ease, box-shadow .2s ease; }
 .accordion-item:hover{ transform: scale(1.03); box-shadow: 0 10px 22px rgba(20,40,70,.16); position:relative; z-index:2; }
 .navbar .nav-link:hover{ transform: scale(1.1); }
@@ -324,6 +323,15 @@ body.theme-light .ann-section{ color:#2b78b8; }
   .accordion-item:hover, .navbar .nav-link:hover{ transform:none; }
 }
 
-/* Bold sidebar*/
 .dash-sidebar .nav-link, .dash-tabs .nav-link{ font-weight:700; }
 .dash-sidebar-title{ font-weight:800; }
+
+@media (max-width: 991.98px){
+  .dash-layout{ align-items:stretch; padding:1rem .6rem 2.5rem; }
+  .dash-main{ width:100%; max-width:100%; }
+  .dash-main .panel-card{ padding:1rem; }
+  .dash-main .row{ --bs-gutter-x:.75rem; }
+  .dash-main .table{ display:block; max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .dash-main img, .dash-main canvas{ max-width:100%; height:auto; }
+  .stat-card .num{ font-size:1.5rem; }
+}
