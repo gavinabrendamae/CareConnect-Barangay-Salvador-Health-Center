@@ -300,7 +300,6 @@ body.theme-light .imm-dose{ border-left-color:#2b78b8; }
 body.theme-light .ann-item{ border-left-color:#2b78b8; }
 body.theme-light .ann-section{ color:#2b78b8; }
 
-/* ── Hover ── */
 .service-card, .specialist-card, .stat-card, .ann-item, .lab-card, .chip,
 .dash-sidebar .nav-link, .dash-tabs .nav-link{
   transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
@@ -335,3 +334,11 @@ body.theme-light .ann-section{ color:#2b78b8; }
   .dash-main img, .dash-main canvas{ max-width:100%; height:auto; }
   .stat-card .num{ font-size:1.5rem; }
 }
+
+.navbar.site-nav{ background: var(--text-dark); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+.site-nav .navbar-brand{ color:#fff !important; }
+.site-nav .nav-link{ color:#e6edf5 !important; }
+.site-nav .nav-link:hover{ color:#ADDFDE !important; }
+.site-nav .navbar-toggler{ border-color:rgba(255,255,255,.5); }
+.site-nav .navbar-toggler-icon{ filter: invert(1); }
+.site-nav .btn-primary-custom{ border:1px solid rgba(255,255,255,.55); }

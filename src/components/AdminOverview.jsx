@@ -13,7 +13,8 @@ export default function AdminOverview() {
   const [error, setError] = useState('');
   const [span, setSpan] = useState(6);
   const [trend, setTrend] = useState(null);
-  const [pick, setPick] = useState(null); 
+  const [pick, setPick] = useState(null); // symptom whose trend is open in the pop-up
+
   useEffect(() => {
     (async () => {
       const month = monthStartISO();
@@ -70,7 +71,7 @@ export default function AdminOverview() {
   const cards = [
     { num: d.residents, lbl: 'Total registered residents', icon: 'bi-people-fill' },
     { num: d.inConsult + d.waiting, lbl: `Active consultations today (${d.inConsult} ongoing · ${d.waiting} waiting)`, icon: 'bi-clipboard2-pulse' },
-    { num: d.pendingVac, lbl: 'Immunizations due / overdue', icon: 'bi-syringe' },
+    { num: d.pendingVac, lbl: 'Immunizations due / overdue', icon: 'bi-shield-plus' },
     { num: d.lowOut + d.expiring, lbl: `Low stock alerts (FEFO) — ${d.lowOut} low/out · ${d.expiring} expiring/expired`, icon: 'bi-exclamation-triangle' },
   ];
 

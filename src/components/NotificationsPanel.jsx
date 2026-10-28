@@ -5,7 +5,7 @@ export default function NotificationsPanel({ items, unread, markRead, markAllRea
     <>
     {upcoming.length > 0 && (
       <div className="panel-card mb-4" style={{ borderLeft: '5px solid #1d6fb8' }}>
-        <h5 className="mb-3"><i className="bi bi-syringe me-2" />Upcoming vaccines</h5>
+        <h5 className="mb-3"><i className="bi bi-shield-plus me-2" />Upcoming vaccines</h5>
         {upcoming.map((v) => {
           const d = daysUntil(v.scheduled_date);
           return (

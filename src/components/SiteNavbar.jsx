@@ -9,7 +9,7 @@ export default function SiteNavbar() {
   const { session, role } = useAuth();
 
   return (
-    <nav className="navbar navbar-expand-lg sticky-top py-3">
+    <nav className="navbar navbar-expand-lg sticky-top py-3 site-nav">
       <div className="container">
         <a className="navbar-brand" href={`${import.meta.env.BASE_URL}#home`}>
           <BrandMark />

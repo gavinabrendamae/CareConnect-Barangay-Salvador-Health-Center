@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SiteNavbar from '../components/SiteNavbar.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
@@ -6,7 +6,7 @@ import Modal from '../components/Modal.jsx';
 import AnnouncementModal from '../components/AnnouncementModal.jsx';
 
 const SERVICES = [
-  { key: 'vaccination', icon: 'bi-syringe', title: 'Vaccination Services', short: 'Track, schedule, and manage vaccine records digitally.',
+  { key: 'vaccination', icon: 'bi-shield-plus', title: 'Vaccination Services', short: 'Track, schedule, and manage vaccine records digitally.',
     body: 'We track every dose from birth to adulthood - BCG, Hepatitis B, Pentavalent, OPV, and Tetanus Toxoid among others. Parents and patients can view upcoming and overdue doses directly from their patient portal, and residents receive automatic email reminders before their schedule.' },
   { key: 'prenatal', icon: 'bi-person-arms-up', title: 'Prenatal Care', short: 'Monitor maternal health and schedule regular checkups.',
     body: 'Expecting mothers are monitored through every trimester with scheduled checkups, vital sign tracking, and risk alerts for conditions like high blood pressure. Midwives can log consultations and keep a complete prenatal history for each patient.' },
@@ -40,6 +40,9 @@ const FAQS = [
   { q: 'May libreng gamot ba sa Health Center?', a: 'May mga available na libreng gamot depende sa uri ng sakit at kasalukuyang supply ng Health Center. I-click ang Medicines sa itaas upang makita ang mga gamot na iniaalok ng Health Center.', img: `${import.meta.env.BASE_URL}Resources/faq8.jpg` },
 ];
 
+// Hero background slideshow — pictures are in public/Resources
+const HERO_IMAGES = ['Salv1.jpg', 'Home.png', 'Home1.png', 'Home2.png'].map((f) => `${import.meta.env.BASE_URL}Resources/${f}`);
+
 const PAGE_SIZE = 4;
 const SPECIALIST_PAGES = Array.from({ length: Math.ceil(SPECIALISTS.length / PAGE_SIZE) }, (_, i) =>
   SPECIALISTS.slice(i * PAGE_SIZE, i * PAGE_SIZE + PAGE_SIZE)
@@ -51,6 +54,13 @@ export default function LandingPage() {
   const [slide, setSlide] = useState(0);
   const [annOpen, setAnnOpen] = useState(false);
   const [annCount, setAnnCount] = useState(0);
+  const [bg, setBg] = useState(0);
+
+  useEffect(() => {
+    HERO_IMAGES.forEach((src) => { const i = new Image(); i.src = src; }); // preload so the fade is smooth
+    const t = setInterval(() => setBg((b) => (b + 1) % HERO_IMAGES.length), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   const faqImg = openFaq === null ? FAQS[3].img : FAQS[openFaq].img;
 
@@ -60,7 +70,13 @@ export default function LandingPage() {
       <AnnouncementModal open={annOpen} onClose={() => setAnnOpen(false)} onLoaded={setAnnCount} />
 
       <section id="home" className="hero">
-        <div className="container">
+        {HERO_IMAGES.map((src, i) => (
+          <div key={src} aria-hidden="true" style={{
+            position: 'absolute', inset: 0, zIndex: 0, opacity: bg === i ? 1 : 0, transition: 'opacity 1.2s ease-in-out',
+            background: `linear-gradient(180deg, rgba(14,34,58,.50), rgba(14,34,58,.62)), url('${src}') center 20% / cover no-repeat`,
+          }} />
+        ))}
+        <div className="container" style={{ position: 'relative', zIndex: 1, textShadow: '0 2px 12px rgba(0,0,0,.55)' }}>
           <h1>Bringing Better <span className="accent">Healthcare to the Barangay</span><br />— Digitally</h1>
           <p className="lead">Streamline records, monitor vaccinations, and improve decision-making with our Healthcare Information System for your Barangay Health Center.</p>
           <Link to="/register" className="btn btn-primary-custom btn-lg">Join us Now</Link>
@@ -69,6 +85,12 @@ export default function LandingPage() {
               <i className="bi bi-megaphone-fill me-2" />Announcements
               {annCount > 0 && <span className="badge bg-danger rounded-pill">{annCount}</span>}
             </button>
+          </div>
+          <div className="d-flex justify-content-center gap-2 mt-4">
+            {HERO_IMAGES.map((src, i) => (
+              <button key={src} type="button" aria-label={`Show picture ${i + 1}`} onClick={() => setBg(i)}
+                style={{ width: bg === i ? 26 : 10, height: 10, borderRadius: 6, border: 0, padding: 0, background: bg === i ? '#fff' : 'rgba(255,255,255,.5)', transition: 'all .3s' }} />
+            ))}
           </div>
         </div>
       </section>
@@ -92,7 +114,11 @@ export default function LandingPage() {
               <a href="#services" className="btn btn-primary-custom mt-2">See More</a>
             </div>
             <div className="col-lg-6">
-              <div className="about-visual"><i className="bi bi-hospital" /></div>
+              <img
+                src={`${import.meta.env.BASE_URL}Resources/Vaccine.png`}
+                alt="Vaccination at the Barangay Health Center"
+                style={{ width: '100%', height: 300, objectFit: 'cover', borderRadius: '1rem', display: 'block', boxShadow: '0 10px 30px rgba(20,40,70,.12)' }}
+              />
             </div>
           </div>
         </div>
@@ -129,10 +155,10 @@ export default function LandingPage() {
             <div className="row g-4 justify-content-center">
               {SPECIALIST_PAGES[slide].map((p) => (
                 <div className="col-6 col-md-3" key={p.name}>
-                  <div className="specialist-card">
-                    <div className="avatar-initials">{p.initials}</div>
+                  <div className="specialist-card h-100">
+                    <div className="avatar-initials" style={{ background: '#0C4C8A', color: '#fff', boxShadow: '0 4px 10px rgba(12,76,138,.35)' }}>{p.initials}</div>
                     <h6>{p.name}</h6>
-                    <div className="role">{p.purok}</div>
+                    <div className="role">{p.purok || '\u00A0'}</div>
                     <div className="role">{p.role}</div>
                   </div>
                 </div>

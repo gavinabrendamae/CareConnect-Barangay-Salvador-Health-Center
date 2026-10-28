@@ -24,6 +24,7 @@ const TABS = [
   { key: 'profile', label: 'My Profile', icon: 'bi-person-vcard' },
 ];
 
+// An immunization-card dose as a simple "vaccine" row: confirmed by staff = administered, otherwise scheduled.
 const asVax = (r) => ({ id: r.id, patient_id: r.patient_id, vaccine_name: r.vaccine, dose_label: `dose ${r.dose_no}`,
   scheduled_date: r.given_date, status: r.confirmed_at ? 'administered' : 'scheduled' });
 
@@ -49,6 +50,7 @@ export default function ResidentDashboard() {
   const [error, setError] = useState('');
   const notif = useNotifications();
 
+  // lighter theme for residents only (see body.theme-light in styles.css)
   useEffect(() => {
     document.body.classList.add('theme-light');
     return () => document.body.classList.remove('theme-light');
@@ -66,6 +68,8 @@ export default function ResidentDashboard() {
         supabase.from('prescriptions').select('*, medicine:medicines(name, unit)').eq('patient_id', p.id).order('created_at', { ascending: false }),
       ]);
       setVaccines((v.data ?? []).map(asVax)); setConsults(c.data ?? []); setRx(r.data ?? []);
+
+      // Family members linked to this resident as household head (visible to the head via RLS).
       const { data: m } = await supabase.from('patients')
         .select('id, first_name, middle_name, last_name, suffix, birth_date, gender, medical_id, patient_type')
         .eq('household_head_id', p.id).order('birth_date');
@@ -101,7 +105,7 @@ export default function ResidentDashboard() {
               <div className="num" style={{ fontSize: '1.4rem' }}>{lastVisit ? formatDate(lastVisit) : 'No visit yet'}</div>
               <div className="lbl">Last check-up</div></div></div>
             <div className="col-md-6"><div className="stat-card">
-              <i className="bi bi-syringe text-success" />
+              <i className="bi bi-shield-plus text-success" />
               <div className="num" style={{ fontSize: '1.4rem' }}>{next ? formatDate(next.scheduled_date) : 'None scheduled'}</div>
               <div className="lbl">{next ? `Next vaccine: ${next.vaccine_name}${next.dose_label ? ` (${next.dose_label})` : ''} — ${nameOf(next.patient_id)}` : 'Next vaccine'}</div></div></div>
           </div>

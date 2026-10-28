@@ -29,11 +29,14 @@ export default function LoginPage() {
     supabase.rpc('setup_available').then(({ data }) => setSetupOpen(Boolean(data)));
   }, []);
 
+  // Signed in with the password but not confirmed by email today -> show the code step.
   const verifiedToday = profile?.email_verified_on === manilaToday();
-  const blocked = profile && (profile.is_active === false); 
+  const waiting = profile && (profile.approval_status === 'pending' || profile.approval_status === 'declined');
+  const blocked = profile && !waiting && (profile.is_active === false); // the dashboard shows its own "deactivated" page
   const needsCode = Boolean(session && profile && !blocked && !verifiedToday
     && profile.approval_status !== 'pending' && profile.approval_status !== 'declined');
 
+  // After the password (and the daily email code, if due) comes the puzzle captcha, then the dashboard.
   const needsCaptcha = Boolean(session && profile && !blocked && verifiedToday && !captchaDone);
 
   useEffect(() => {
@@ -69,11 +72,12 @@ export default function LoginPage() {
     if (prof.approval_status === 'pending' || prof.approval_status === 'declined') {
       await supabase.auth.signOut();
       setError(prof.approval_status === 'pending'
-        ? 'Your account is still waiting for approval by the Super Admin. Please try again later.'
-        : 'Your registration was declined by the Super Admin. Please contact the health center.');
+        ? 'Your account is under review by the admins. You will receive an email once it is verified.'
+        : 'Your registration was declined by the admins. Please contact the health center.');
       setBusy(false);
       return;
     }
+    // the effects above send the code (or open the dashboard if already confirmed today)
     setBusy(false);
   }
 
@@ -113,7 +117,11 @@ export default function LoginPage() {
               </div>
             )}
             {notice && <div className="alert alert-success">{notice}</div>}
-            {error && <div className="alert alert-danger">{error}</div>}
+            {error && (
+              <div className={`alert ${error.startsWith('Your account is under review') ? 'alert-warning' : 'alert-danger'}`} role="alert">
+                <i className={`bi ${error.startsWith('Your account is under review') ? 'bi-hourglass-split' : 'bi-exclamation-triangle-fill'} me-2`} />{error}
+              </div>
+            )}
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label className="form-label" htmlFor="loginEmail">Email:</label>
