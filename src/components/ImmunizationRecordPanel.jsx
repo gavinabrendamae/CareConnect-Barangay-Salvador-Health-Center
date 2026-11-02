@@ -6,8 +6,8 @@ import { calcAge } from '../lib/format.js';
 
 // Staff / admin: pick a patient, then edit the DOH-style immunization card.
 // Women aged 15–49 also get a Family Planning (Depo-Provera) card.
-export default function ImmunizationRecordPanel() {
-  const [patient, setPatient] = useState(null);
+export default function ImmunizationRecordPanel({ initialPatient = null, hint = '' }) {
+  const [patient, setPatient] = useState(initialPatient);
   const [which, setWhich] = useState('main');
   useEffect(() => setWhich('main'), [patient?.id]);
   const age = patient ? calcAge(patient.birth_date) : null;
@@ -16,6 +16,9 @@ export default function ImmunizationRecordPanel() {
     <div className="panel-card">
       <h5 className="mb-3">Immunization Record Card</h5>
       <PatientPicker value={patient} onChange={setPatient} />
+      {hint && patient && patient.id === initialPatient?.id && (
+        <div className="alert alert-warning py-2"><i className="bi bi-calendar-event me-2" />Reschedule: <strong>{hint}</strong> — change its date in the card below, then save.</div>
+      )}
       {patient && female && (
         <div className="btn-group mb-3">
           <button type="button" className={`btn btn-sm ${which === 'main' ? 'btn-primary-custom' : 'btn-outline-secondary'}`} onClick={() => setWhich('main')}>Immunization card</button>

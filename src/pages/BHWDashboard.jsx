@@ -25,21 +25,22 @@ const TABS = [
 
 export default function BHWDashboard() {
   const [tab, setTab] = useState('dashboard');
+  const [resched, setResched] = useState(null); // { patient, hint } — opened from "Reschedule"
   const medReq = useMedicineRequestCount();
   const tabs = TABS.map((t) => (t.key === 'medreq' ? { ...t, badge: medReq } : t));
   return (
-    <DashboardShell title="BHW Panel" tabs={tabs} active={tab} onTab={setTab}>
+    <DashboardShell title="BHW Panel" tabs={tabs} active={tab} onTab={(k) => { setResched(null); setTab(k); }}>
       <EventReminder />
       {tab === 'dashboard' && (
         <div className="row g-4">
-          <div className="col-12"><DueVaccinations /></div>
+          <div className="col-12"><DueVaccinations onReschedule={(patient, hint) => { setResched({ patient, hint }); setTab('immrecord'); }} /></div>
           <div className="col-12"><QueueStatus /></div>
         </div>
       )}
       {tab === 'register' && (
         <div className="row"><div className="col-xl-10"><PatientForm /></div></div>
       )}
-      {tab === 'immrecord' && <ImmunizationRecordPanel />}
+      {tab === 'immrecord' && <ImmunizationRecordPanel key={resched?.patient?.id ?? 'none'} initialPatient={resched?.patient ?? null} hint={resched?.hint ?? ''} />}
       {tab === 'medreq' && <MedicineRequestsPanel />}
       {tab === 'dispense' && <DispenseLogPanel />}
       {tab === 'profile' && <ProfilePanel />}

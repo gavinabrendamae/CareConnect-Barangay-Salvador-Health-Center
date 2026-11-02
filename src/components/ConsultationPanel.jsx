@@ -95,7 +95,7 @@ export default function ConsultationPanel({ queueItem, onFinished, onLabRequeste
           <fieldset disabled={!patient}>
             <div className="mb-3"><label className="form-label">Chief complaint</label>
               <input className="form-control" value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
-            <div className="mb-3"><label className="form-label required">Official diagnosis</label>
+            <div className="mb-3"><label className="form-label required">Clinical impression</label>
               <input className="form-control" value={f.diagnosis} onChange={(e) => setF({ ...f, diagnosis: e.target.value })} required /></div>
             <div className="mb-3"><label className="form-label">Notes / treatment plan</label>
               <textarea rows="3" className="form-control" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>

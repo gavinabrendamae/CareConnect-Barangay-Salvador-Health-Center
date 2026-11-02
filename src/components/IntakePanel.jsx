@@ -8,6 +8,10 @@ import { SYMPTOM_CATEGORIES, guessCategory, splitCategories, joinCategories } fr
 const blank = { bp_systolic: '', bp_diastolic: '', weight_kg: '', height_cm: '', temperature_c: '', pulse_rate: '', chief_complaint: '', symptom_category: '' };
 const num = (v) => (v === '' ? null : Number(v));
 
+/**
+ * BHW triage: check a resident in, take vitals + chief complaint,
+ * and hand the patient over to the Midwife/Doctor queue (queue.status 'for_vitals' -> 'waiting').
+ */
 export default function IntakePanel() {
   const { user } = useAuth();
   const [patient, setPatient] = useState(null);
@@ -16,7 +20,7 @@ export default function IntakePanel() {
   const [f, setF] = useState(blank);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [catManual, setCatManual] = useState(false); 
+  const [catManual, setCatManual] = useState(false); // true once the BHW picks a category by hand
 
   const loadPending = useCallback(async () => {
     const { data } = await supabase.from('queue')
@@ -34,15 +38,20 @@ export default function IntakePanel() {
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
+  // Typing the symptoms auto-suggests a category (until the BHW chooses one manually).
   function setComplaint(e) {
     const text = e.target.value;
-    setF({ ...f, chief_complaint: text, symptom_category: catManual ? f.symptom_category : guessCategory(text) });
+    // keep suggesting while the chosen categories are still just the suggestions (or nothing is chosen yet)
+    const follows = !catManual || !f.symptom_category || f.symptom_category === guessCategory(f.chief_complaint);
+    setF({ ...f, chief_complaint: text, symptom_category: follows ? guessCategory(text) : f.symptom_category });
+    if (follows) setCatManual(false);
   }
 
   function pick(p) {
     setPatient(p);
     setQueueItem(null);
     setMsg(null);
+    setCatManual(false);
   }
 
   function takeVitals(item) {
@@ -96,6 +105,7 @@ export default function IntakePanel() {
     }).select('id').single();
     if (error) { setBusy(false); return setMsg({ type: 'danger', text: error.message }); }
 
+    // Hand over to the Midwife/Doctor queue.
     let qid = queueItem?.id;
     if (!qid) {
       const { data: open } = await supabase.from('queue').select('id').eq('patient_id', patient.id)
@@ -109,7 +119,7 @@ export default function IntakePanel() {
     setBusy(false);
     if (qErr) return setMsg({ type: 'warning', text: `Vitals saved, but the patient could not be passed to the queue: ${qErr.message}` });
 
-    setMsg({ type: 'success', text: `${fullName(patient)} was passed to the Midwife/Doctor queue.` });
+    setMsg({ type: 'success', text: `${fullName(patient)} was added to the queue.` });
     setPatient(null); setQueueItem(null); setF(blank); setCatManual(false);
     loadPending();
   }
@@ -166,7 +176,7 @@ export default function IntakePanel() {
               <div className="col-12 col-md-4"><label className="form-label">BMI</label>
                 <input className="form-control" value={b ?? '—'} readOnly /></div>
               <div className="col-12"><label className="form-label required">Chief complaint (sintomas)</label>
-                <textarea rows="2" className="form-control" placeholder="e.g. Lagnat for three days" value={f.chief_complaint} onChange={setComplaint} /></div>
+                <textarea rows="2" className="form-control" placeholder="e.g. Lagnat for one month" value={f.chief_complaint} onChange={setComplaint} /></div>
               <div className="col-12"><label className="form-label required">Symptom category (pwedeng more than one)</label>
                 <div className="d-flex flex-wrap gap-2">
                   {SYMPTOM_CATEGORIES.map((c) => {
@@ -185,9 +195,9 @@ export default function IntakePanel() {
                   <button type="button" className="btn btn-sm btn-link" onClick={() => { setCatManual(true); setF({ ...f, symptom_category: joinCategories(SYMPTOM_CATEGORIES) }); }}>Select all</button>
                   <button type="button" className="btn btn-sm btn-link text-danger" onClick={() => { setCatManual(true); setF({ ...f, symptom_category: '' }); }}>Clear</button>
                 </div>
-                </div>
+                <div className="form-text">Auto-pick galing sa sinulat mong sintomas — pwede mong dagdagan o bawasan.</div></div>
             </div>
-            <button className="btn btn-primary-custom mt-3" disabled={busy}>{busy ? 'Saving...' : 'Save & pass to Midwife/Doctor'}</button>
+            <button className="btn btn-primary-custom mt-3" disabled={busy}>{busy ? 'Saving...' : 'Add to queue'}</button>
           </fieldset>
         </form>
       </div>

@@ -18,6 +18,7 @@ import ReportsPanel from '../components/ReportsPanel.jsx';
 import MedicineRequestsPanel from '../components/MedicineRequestsPanel.jsx';
 import IntakePanel from '../components/IntakePanel.jsx';
 import ImmunizationRecordPanel from '../components/ImmunizationRecordPanel.jsx';
+import DueVaccinations from '../components/DueVaccinations.jsx';
 import FamilyPlanningPanel from '../components/FamilyPlanningPanel.jsx';
 import ProfilePanel from '../components/ProfilePanel.jsx';
 import { useMedicineRequestCount } from '../lib/useMedicineRequestCount.js';
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
   const { role } = useAuth();
   const [tab, setTab] = useState('overview');
   const [active, setActive] = useState(null);
+  const [resched, setResched] = useState(null); // { patient, hint } — opened from "Reschedule"
 
   const q = useQueueCounts();
   const medReq = useMedicineRequestCount();
@@ -55,9 +57,14 @@ export default function AdminDashboard() {
   }, [role, q.waiting, q.inConsult, q.awaitingLab, medReq, pendingReg]);
 
   return (
-    <DashboardShell title="Admin Panel" tabs={tabs} active={tab} onTab={setTab}>
+    <DashboardShell title="Admin Panel" tabs={tabs} active={tab} onTab={(k) => { setResched(null); setTab(k); }}>
       <EventReminder onOpenCalendar={() => setTab('events')} />
-      {tab === 'overview' && <AdminOverview />}
+      {tab === 'overview' && (
+        <>
+          <AdminOverview />
+          <div className="mt-4"><DueVaccinations onReschedule={(patient, hint) => { setResched({ patient, hint }); setTab('immrecord'); }} /></div>
+        </>
+      )}
       {tab === 'queue' && <QueuePanel onStartConsult={(item) => { setActive(item); setTab('consult'); }} onOpenLab={() => setTab('lab')} />}
       {tab === 'consult' && (
         <ConsultationPanel key={active?.id ?? 'walk-in'} queueItem={active} onFinished={() => setActive(null)} onLabRequested={() => { setActive(null); setTab('queue'); }} />
@@ -72,7 +79,7 @@ export default function AdminDashboard() {
       {tab === 'medreq' && <MedicineRequestsPanel />}
       {tab === 'triage' && <IntakePanel />}
       {tab === 'fp' && <FamilyPlanningPanel />}
-      {tab === 'immrecord' && <ImmunizationRecordPanel />}
+      {tab === 'immrecord' && <ImmunizationRecordPanel key={resched?.patient?.id ?? 'none'} initialPatient={resched?.patient ?? null} hint={resched?.hint ?? ''} />}
       {tab === 'profile' && <ProfilePanel />}
       {tab === 'dispense' && <DispenseLogPanel />}
       {tab === 'people' && <PeoplePanel pending={pendingReg} />}
