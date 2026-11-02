@@ -59,11 +59,11 @@ export default function PatientList() {
               {rows.map((p) => (
                 <tr key={p.id}>
                   <td className="text-nowrap"><code>{p.medical_id}</code></td>
-                  <td><strong>{fullName(p)}</strong>
+                  <td><strong>{fullName(p)}</strong>{!p.patient_type && <span className="badge bg-warning text-dark ms-2" title="Open Edit and choose the type of patient">Type not set</span>}
                     <div className="small text-secondary">{p.contact_number || ''}</div></td>
                   <td>{calcAge(p.birth_date)}</td>
                   <td>{p.purok}</td>
-                  <td className="small">{p.patient_type}</td>
+                  <td className="small">{p.patient_type || '—'}</td>
                   <td className="text-end text-nowrap">
                     <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => openHousehold(p)}>Family</button>
                     <button className="btn btn-sm btn-primary-custom" onClick={() => setEditing(p)}>Edit</button>

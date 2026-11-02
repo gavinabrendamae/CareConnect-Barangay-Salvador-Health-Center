@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { sendCode, registerWithCode } from '../lib/emailCode.js';
 import EmailCodeStep from '../components/EmailCodeStep.jsx';
-import { PH_PHONE, PATIENT_TYPES, patientTypeError } from '../lib/format.js';
+import { PH_PHONE } from '../lib/format.js';
 import SiteNavbar from '../components/SiteNavbar.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
 import DatePicker from '../components/DatePicker.jsx';
 import Modal from '../components/Modal.jsx';
 
-const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
+const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5'];
 
 const PW_RULES = [
   { id: 'len', label: 'At least 8 characters', test: (v) => v.length >= 8 },
@@ -21,7 +21,7 @@ const PW_RULES = [
 
 const initial = {
   firstName: '', middleName: '', lastName: '', suffix: '', email: '', dob: '', gender: '',
-  contact: '', password: '', password2: '', patientType: '', blkStreet: '', purok: '',
+  contact: '', password: '', password2: '', blkStreet: '', purok: '',
   terms: false,
 };
 
@@ -31,7 +31,7 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [showTerms, setShowTerms] = useState(false);
-  const [step, setStep] = useState('form'); 
+  const [step, setStep] = useState('form'); // form | code
 
   const set = (key) => (e) => setF({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const setVal = (key) => (val) => setF((prev) => ({ ...prev, [key]: val }));
@@ -41,8 +41,6 @@ export default function RegisterPage() {
     setError('');
 
     if (!f.dob) return setError('Please select your date of birth.');
-    const typeErr = patientTypeError(f.dob, f.patientType);
-    if (typeErr) return setError(typeErr);
     if (!PH_PHONE.test(f.contact.trim())) return setError('Enter a valid mobile number (e.g. 09123456789 or +639123456789).');
     if (!PW_RULES.every((r) => r.test(f.password))) return setError('Password does not meet all the requirements.');
     if (f.password !== f.password2) return setError('Passwords do not match.');
@@ -72,11 +70,10 @@ export default function RegisterPage() {
         contact_number: f.contact.trim(),
         purok: f.purok,
         address: f.blkStreet.trim(),
-        patient_type: f.patientType,
       },
     });
     navigate('/login', {
-      state: { notice: 'Email verified! Your registration was sent to the Super Admin for approval. You can log in once it is approved.' },
+      state: { notice: 'Email verified! Your registration was sent to the admins for approval. You can log in once it is approved.' },
     });
   }
 
@@ -175,15 +172,6 @@ export default function RegisterPage() {
               <div className="mb-3">
                 <label className="form-label required" htmlFor="regPassword2">Retype password</label>
                 <PasswordInput id="regPassword2" value={f.password2} onChange={setVal('password2')} placeholder="Confirm Password" autoComplete="new-password" />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label required" htmlFor="patientType">Type of Patient</label>
-                <select className="form-select" id="patientType" value={f.patientType} onChange={set('patientType')} required>
-                  <option value="" disabled>Select the type of patient</option>
-                  {PATIENT_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
-                {patientTypeError(f.dob, f.patientType) && <div className="form-text text-danger">{patientTypeError(f.dob, f.patientType)}</div>}
               </div>
 
               <label className="form-label mb-2">Patient Address</label>

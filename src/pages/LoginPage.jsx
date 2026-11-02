@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [setupOpen, setSetupOpen] = useState(false);
-  const notice = location.state?.notice;
+  const [notice, setNotice] = useState(location.state?.notice ?? ''); // shown once; replaced by any new message
 
   useEffect(() => {
     supabase.rpc('setup_available').then(({ data }) => setSetupOpen(Boolean(data)));
@@ -52,6 +52,7 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setNotice('');
     setBusy(true);
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });

@@ -29,7 +29,7 @@ export default function StaffPanel() {
     if (error) { setBusy(false); return setMsg({ type: 'danger', text: error.message }); }
     if (!data.user || data.user.identities?.length === 0) {
       setBusy(false);
-      return setMsg({ type: 'danger', text: 'That email address is already registered. Use "Promote to staff" in the table below instead.' });
+      return setMsg({ type: 'danger', text: 'That email address is already registered. Use "Promote a registered resident to staff" in the section below instead.' });
     }
 
     const { error: roleErr } = await supabase.from('profiles').update({ role: f.role }).eq('id', data.user.id);
@@ -62,7 +62,7 @@ export default function StaffPanel() {
           </div>
         </form>
       </div>
-      <div className="col-12"><RolesPanel key={refresh} /></div>
+      <div className="col-12"><RolesPanel key={refresh} group="staff" /></div>
     </div>
   );
-} 
+}
