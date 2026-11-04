@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import SiteNavbar from '../components/SiteNavbar.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
 import Modal from '../components/Modal.jsx';
-import AnnouncementModal from '../components/AnnouncementModal.jsx';
+  import { AnnouncementModal } from '../components/Announcements.jsx';
 
 const SERVICES = [
   { key: 'vaccination', icon: 'bi-shield-plus', title: 'Vaccination Services', short: 'Track, schedule, and manage vaccine records digitally.',

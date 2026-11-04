@@ -8,7 +8,7 @@ import ConsultationPanel from '../components/ConsultationPanel.jsx';
 import InventoryPanel from '../components/InventoryPanel.jsx';
 import StockAlerts from '../components/StockAlerts.jsx';
 import DispenseLogPanel from '../components/DispenseLogPanel.jsx';
-import AnnouncementsPanel from '../components/AnnouncementsPanel.jsx';
+import AnnouncementsPanel from '../components/Announcements.jsx';
 import PeoplePanel from '../components/PeoplePanel.jsx';
 import ActivityLogPanel from '../components/ActivityLogPanel.jsx';
 import LabPanel from '../components/LabPanel.jsx';

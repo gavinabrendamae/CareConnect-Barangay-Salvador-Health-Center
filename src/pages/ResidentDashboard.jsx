@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { fullName, formatDate, formatDateTime, calcAge, daysUntil } from '../lib/format.js';
 import DashboardShell from '../components/DashboardShell.jsx';
 import { Spinner } from '../components/ProtectedRoute.jsx';
-import AnnouncementList from '../components/AnnouncementList.jsx';
+  import { AnnouncementModal } from '../components/Announcements.jsx';
 import MedicineAvailability from '../components/MedicineAvailability.jsx';
 import ImmunizationCard from '../components/ImmunizationCard.jsx';
 import FamilyPlanningCard from '../components/FamilyPlanningCard.jsx';

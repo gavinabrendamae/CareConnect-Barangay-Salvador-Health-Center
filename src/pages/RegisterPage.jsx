@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { sendCode, registerWithCode } from '../lib/emailCode.js';
 import EmailCodeStep from '../components/EmailCodeStep.jsx';
-import { PH_PHONE } from '../lib/format.js';
 import SiteNavbar from '../components/SiteNavbar.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
 import DatePicker from '../components/DatePicker.jsx';
 import Modal from '../components/Modal.jsx';
 
-const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5'];
+const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 const PW_RULES = [
   { id: 'len', label: 'At least 8 characters', test: (v) => v.length >= 8 },
@@ -18,6 +17,36 @@ const PW_RULES = [
   { id: 'num', label: 'At least one number (0-9)', test: (v) => /[0-9]/.test(v) },
   { id: 'special', label: 'At least one special character (!@#$...)', test: (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v) },
 ];
+
+// Philippine mobile number: fixed "flag +63" prefix + a box for the remaining 10 digits (e.g. 9123456789).
+const PH_LOCAL = /^9\d{9}$/;
+
+function PhFlag() {
+  return (
+    <svg width="24" height="16" viewBox="0 0 24 16" aria-hidden="true" style={{ borderRadius: 2, boxShadow: '0 0 0 1px rgba(0,0,0,.15)' }}>
+      <rect width="24" height="8" fill="#0038a8" />
+      <rect y="8" width="24" height="8" fill="#ce1126" />
+      <path d="M0 0 L13 8 L0 16 Z" fill="#fff" />
+      <circle cx="4" cy="8" r="1.6" fill="#fcd116" />
+    </svg>
+  );
+}
+
+function PhoneInput({ id, value, onChange }) {
+  function handle(e) {
+    let v = e.target.value.replace(/\D/g, '');
+    if (v.startsWith('63')) v = v.slice(2);   // pasted +63...
+    if (v.startsWith('0')) v = v.slice(1);    // typed 09...
+    onChange(v.slice(0, 10));
+  }
+  return (
+    <div className="input-group">
+      <span className="input-group-text gap-2 bg-light fw-semibold"><PhFlag />+63</span>
+      <input id={id} type="tel" inputMode="numeric" className="form-control" placeholder="9XXXXXXXXX (optional)"
+        value={value} onChange={handle} maxLength={10} autoComplete="tel-national" />
+    </div>
+  );
+}
 
 const initial = {
   firstName: '', middleName: '', lastName: '', suffix: '', email: '', dob: '', gender: '',
@@ -41,7 +70,7 @@ export default function RegisterPage() {
     setError('');
 
     if (!f.dob) return setError('Please select your date of birth.');
-    if (!PH_PHONE.test(f.contact.trim())) return setError('Enter a valid mobile number (e.g. 09123456789 or +639123456789).');
+    if (f.contact && !PH_LOCAL.test(f.contact)) return setError('Enter the 10-digit mobile number after +63 (example: 9123456789).');
     if (!PW_RULES.every((r) => r.test(f.password))) return setError('Password does not meet all the requirements.');
     if (f.password !== f.password2) return setError('Passwords do not match.');
 
@@ -67,7 +96,7 @@ export default function RegisterPage() {
         suffix: f.suffix,
         birth_date: f.dob,
         gender: f.gender,
-        contact_number: f.contact.trim(),
+        contact_number: f.contact ? `+63${f.contact}` : '',
         purok: f.purok,
         address: f.blkStreet.trim(),
       },
@@ -150,8 +179,8 @@ export default function RegisterPage() {
               </div>
 
               <div className="mb-3">
-                <label className="form-label required" htmlFor="contactNumber">Contact Number</label>
-                <input type="tel" className="form-control" id="contactNumber" placeholder="09XXXXXXXXX" value={f.contact} onChange={set('contact')} required />
+                <label className="form-label" htmlFor="contactNumber">Contact Number</label>
+                <PhoneInput id="contactNumber" value={f.contact} onChange={setVal('contact')} />
               </div>
 
               <div className="mb-2">
@@ -194,16 +223,19 @@ export default function RegisterPage() {
                 <label className="form-check-label" htmlFor="terms">
                   I agree to the{' '}
                   <a href="#terms" className="link-primary-custom" onClick={(e) => { e.preventDefault(); setShowTerms(true); }}>Terms and Conditions</a>
+                  {' '}of the Health Center IMS Patient Portal
                 </label>
               </div>
 
               <button type="submit" className="btn btn-primary-custom w-100 mb-3" disabled={busy}>
                 {busy ? 'Sending code...' : 'Register'}
               </button>
+              <div className="alert alert-info small py-2 mb-3" role="note">
+                <i className="bi bi-info-circle me-2" />
+                Your account will stay <strong>pending</strong> for a while until the health center approves it. You can also visit the
+                Barangay Salvador Health Center and the staff can create your account for you.
+              </div>
               <p className="text-center mb-0">Already have an account? <Link to="/login" className="link-primary-custom">Sign-in</Link></p>
-              <p className="text-center mt-2 mb-0 small text-secondary">
-                BHW, Midwife, and Admin accounts are assigned by the health center administrator after you register as a resident.
-              </p>
             </form>
           </div>
         </div>
