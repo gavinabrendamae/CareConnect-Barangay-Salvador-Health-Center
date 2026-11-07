@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fullName, formatDate, formatDateTime, calcAge, daysUntil } from '../lib/format.js';
 import DashboardShell from '../components/DashboardShell.jsx';
+import Modal from '../components/Modal.jsx';
 import { Spinner } from '../components/ProtectedRoute.jsx';
-  import { AnnouncementModal } from '../components/Announcements.jsx';
+import { AnnouncementList } from '../components/Announcements.jsx';
 import MedicineAvailability from '../components/MedicineAvailability.jsx';
 import ImmunizationCard from '../components/ImmunizationCard.jsx';
 import FamilyPlanningCard from '../components/FamilyPlanningCard.jsx';
@@ -28,6 +29,88 @@ const TABS = [
 const asVax = (r) => ({ id: r.id, patient_id: r.patient_id, vaccine_name: r.vaccine, dose_label: `dose ${r.dose_no}`,
   scheduled_date: r.given_date, status: r.confirmed_at ? 'administered' : 'scheduled' });
 
+// Past medical history of one family member (opened from My Family).
+const BLUE = 'var(--primary, #0C4C8A)';
+const SOFT = '#eef4fb';
+const ModalHead = ({ icon, children, count }) => (
+  <div className="d-flex align-items-center gap-2 mt-4 mb-2" style={{ color: BLUE }}>
+    <i className={`bi ${icon}`} /><h6 className="fw-bold mb-0">{children}</h6>
+    {count !== undefined && <span className="badge rounded-pill" style={{ background: BLUE }}>{count}</span>}
+  </div>
+);
+
+function FamilyHistoryModal({ member, onClose }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const [c, r, l] = await Promise.all([
+        supabase.from('consultations').select('*').eq('patient_id', member.id).order('consulted_at', { ascending: false }),
+        supabase.from('prescriptions').select('*, medicine:medicines(name, unit)').eq('patient_id', member.id).order('created_at', { ascending: false }),
+        supabase.from('lab_requests').select('id, tests, status, requested_at').eq('patient_id', member.id).order('requested_at', { ascending: false }),
+      ]);
+      if (live) setData({ consults: c.data ?? [], rx: r.data ?? [], labs: l.data ?? [] });
+    })();
+    return () => { live = false; };
+  }, [member.id]);
+  return (
+    <Modal show large title="Medical history" icon="bi-clipboard2-pulse" onClose={onClose}>
+      <div className="rounded-3 p-3 d-flex align-items-center gap-3" style={{ background: `linear-gradient(135deg, ${BLUE}, #2a7ab8)`, color: '#fff' }}>
+        <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: 52, height: 52, background: 'rgba(255,255,255,.2)', fontSize: '1.3rem' }}>
+          {(member.first_name ?? '?')[0]}{(member.last_name ?? '')[0]}
+        </div>
+        <div>
+          <div className="fw-bold" style={{ fontSize: '1.15rem' }}>{fullName(member)}</div>
+          <div className="small" style={{ opacity: .9 }}>{calcAge(member.birth_date)} yrs · {member.gender || '—'} · {member.medical_id}{member.patient_type ? ` · ${member.patient_type}` : ''}</div>
+        </div>
+      </div>
+      {!data ? <div className="text-secondary mt-3">Loading...</div> : (
+        <>
+          <ModalHead icon="bi-clipboard2-pulse" count={data.consults.length}>Consultations</ModalHead>
+          {data.consults.length === 0 ? <div className="text-secondary">No consultations recorded yet.</div> : data.consults.map((c) => (
+            <div key={c.id} className="rounded-3 p-3 mb-2" style={{ background: SOFT, borderLeft: `4px solid ${BLUE}` }}>
+              <div className="d-flex justify-content-between flex-wrap gap-1">
+                <strong>{c.diagnosis || 'Consultation'}</strong>
+                <span className="small text-secondary"><i className="bi bi-calendar3 me-1" />{formatDateTime(c.consulted_at)}</span>
+              </div>
+              {c.complaint && <div className="small mt-1"><span className="text-secondary">Complaint:</span> {c.complaint}</div>}
+              {c.notes && <div className="small"><span className="text-secondary">Notes:</span> {c.notes}</div>}
+            </div>
+          ))}
+
+          <ModalHead icon="bi-capsule" count={data.rx.length}>Prescriptions</ModalHead>
+          {data.rx.length === 0 ? <div className="text-secondary">No prescriptions yet.</div> : (
+            <div className="d-grid gap-2">
+              {data.rx.map((r) => (
+                <div key={r.id} className="d-flex align-items-start gap-3 rounded-3 border p-2 px-3 bg-white">
+                  <i className="bi bi-capsule-pill fs-5" style={{ color: BLUE }} />
+                  <div className="flex-grow-1">
+                    <div className="fw-semibold">{r.medicine?.name ?? 'Medicine'} <span className="badge bg-light text-dark border ms-1">{r.quantity} {r.medicine?.unit}</span></div>
+                    {r.instructions && <div className="small text-secondary">{r.instructions}</div>}
+                  </div>
+                  <span className="small text-secondary text-nowrap">{formatDate(r.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <ModalHead icon="bi-eyedropper" count={data.labs.length}>Laboratory</ModalHead>
+          {data.labs.length === 0 ? <div className="text-secondary">No laboratory requests.</div> : (
+            <div className="d-grid gap-2">
+              {data.labs.map((l) => (
+                <div key={l.id} className="d-flex justify-content-between align-items-center rounded-3 border p-2 px-3 bg-white">
+                  <span><strong>{l.tests}</strong><span className="small text-secondary ms-2">{formatDate(l.requested_at)}</span></span>
+                  <span className={`badge ${l.status === 'pending' ? 'bg-warning text-dark' : 'bg-success'}`}>{l.status === 'pending' ? 'Waiting for result' : 'Result available'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </Modal>
+  );
+}
+
 function Row({ label, value }) {
   return (
     <div className="col-md-6 mb-3">
@@ -48,6 +131,7 @@ export default function ResidentDashboard() {
   const [famVax, setFamVax] = useState([]);
   const [myCard, setMyCard] = useState('main');
   const [error, setError] = useState('');
+  const [viewMember, setViewMember] = useState(null);
   const notif = useNotifications();
 
   // lighter theme for residents only (see body.theme-light in styles.css)
@@ -129,7 +213,7 @@ export default function ResidentDashboard() {
                     const nv = famVax.find((v) => v.patient_id === m.id && v.status === 'scheduled' && daysUntil(v.scheduled_date) >= 0);
                     return (
                       <tr key={m.id}>
-                        <td><strong>{fullName(m)}</strong></td><td><code>{m.medical_id}</code></td><td>{calcAge(m.birth_date)}</td>
+                        <td><button type="button" className="btn btn-link p-0 fw-bold text-start" onClick={() => setViewMember(m)}>{fullName(m)}</button><div className="small text-secondary">Click to see medical history</div></td><td><code>{m.medical_id}</code></td><td>{calcAge(m.birth_date)}</td>
                         <td>{m.gender || '—'}</td><td className="small">{m.patient_type || '—'}</td>
                         <td className="small">{nv ? `${nv.vaccine_name} · ${formatDate(nv.scheduled_date)}` : '—'}</td>
                       </tr>
@@ -141,6 +225,8 @@ export default function ResidentDashboard() {
           )}
         </div>
       )}
+
+      {viewMember && <FamilyHistoryModal member={viewMember} onClose={() => setViewMember(null)} />}
 
       {tab === 'notifications' && <NotificationsPanel {...notif} upcoming={allVax.filter((v) => v.status === 'scheduled' && daysUntil(v.scheduled_date) >= 0).map((v) => ({ ...v, who: nameOf(v.patient_id) }))} />}
 

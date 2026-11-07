@@ -32,6 +32,7 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
     const channel = supabase
       .channel(`queue-live-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_requests' }, load)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [load]);
@@ -90,7 +91,7 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
                     <tr key={it.id}>
                       <td>{i + 1}</td>
                       <td><strong>{fullName(it.patient)}</strong><div className="small text-secondary">{calcAge(it.patient?.birth_date)} yrs · {it.patient?.purok}</div></td>
-                      <td>{it.reason || '—'}{it.lab_requests?.some((l) => l.status === 'resulted') && <div><span className={`badge ${it.lab_requests.some((l) => l.result_flag === 'abnormal') ? 'bg-danger' : 'bg-success'}`}><i className="bi bi-eyedropper me-1" />Lab result ready{it.lab_requests.some((l) => l.result_flag === 'abnormal') ? ' · ABNORMAL' : ''}</span></div>}{it.vitals?.symptom_category && <div><span className="badge bg-light text-dark border">{it.vitals.symptom_category}</span></div>}</td>
+                      <td>{it.reason || '—'}{it.lab_requests?.some((l) => l.status === 'resulted') && <div><span className={`badge ${it.lab_requests.some((l) => l.result_flag === 'abnormal') ? 'bg-danger' : 'bg-success'}`}><i className="bi bi-eyedropper me-1" />Lab result ready{it.lab_requests.some((l) => l.result_flag === 'abnormal') ? ' · POSITIVE' : ''}</span></div>}{it.vitals?.symptom_category && <div><span className="badge bg-light text-dark border">{it.vitals.symptom_category}</span></div>}</td>
                       <td className="small">
                         {it.vitals ? (
                           <>
@@ -107,7 +108,6 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
                             {it.status === 'in_consultation' ? 'Resume' : 'Start consultation'}
                           </button>
                         )}
-                        <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => setStatus(it.id, 'done')}>Done</button>
                         <button className="btn btn-sm btn-outline-danger" onClick={() => setStatus(it.id, 'cancelled')}>Cancel</button>
                       </td>
                     </tr>
@@ -124,12 +124,17 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
             <div key={it.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-2">
               <div>
                 <strong>{fullName(it.patient)}</strong>
-                <div className="small text-secondary">{(it.lab_requests ?? []).filter((l) => l.status === 'pending' || (l.patient_uploaded && !l.reviewed_at)).map((l) => l.tests).join('; ') || 'Laboratory'} · since {formatDateTime(it.created_at)}</div>
-                {(it.lab_requests ?? []).some((l) => l.outside_clinic && l.status === 'pending') && <span className="badge bg-secondary me-1"><i className="bi bi-building me-1" />At other clinic — waiting for upload</span>}
-                {(it.lab_requests ?? []).some((l) => l.patient_uploaded && !l.reviewed_at) && <span className="badge bg-success"><i className="bi bi-cloud-check me-1" />Uploaded by patient — needs review</span>}
+                <div className="small text-secondary">{(it.lab_requests ?? []).map((l) => l.tests).join('; ') || 'Laboratory'} · since {formatDateTime(it.created_at)}</div>
+                {(it.lab_requests ?? []).some((l) => l.status === 'resulted')
+                  ? <span className={`badge ${(it.lab_requests ?? []).some((l) => l.result_flag === 'abnormal') ? 'bg-danger' : 'bg-success'}`}><i className="bi bi-check-circle me-1" />Result ready{(it.lab_requests ?? []).some((l) => l.result_flag === 'abnormal') ? ' · POSITIVE' : ''}</span>
+                  : <>
+                      {(it.lab_requests ?? []).some((l) => l.outside_clinic) && <span className="badge bg-secondary me-1"><i className="bi bi-building me-1" />At other clinic — waiting for upload</span>}
+                      <span className="badge bg-warning text-dark"><i className="bi bi-hourglass-split me-1" />{(it.lab_requests ?? []).some((l) => l.outside_clinic) ? 'Waiting for result' : 'In the laboratory queue'}</span>
+                    </>}
               </div>
               <div className="text-nowrap">
-                {onOpenLab && <button className="btn btn-sm btn-primary-custom me-1" onClick={onOpenLab}>{(it.lab_requests ?? []).some((l) => l.patient_uploaded && !l.reviewed_at) ? 'Review result' : 'Add result'}</button>}
+                {onOpenLab && (it.lab_requests ?? []).some((l) => l.status === 'resulted') && <button className="btn btn-sm btn-primary-custom me-1" onClick={() => onOpenLab(it)}>Resume</button>}
+                {onOpenLab && !(it.lab_requests ?? []).some((l) => l.status === 'resulted') && (it.lab_requests ?? []).some((l) => l.outside_clinic) && <button className="btn btn-sm btn-outline-primary-custom me-1" onClick={() => onOpenLab(it)}>Add result</button>}
                 <button className="btn btn-sm btn-outline-danger" onClick={() => setStatus(it.id, 'cancelled')}>Cancel</button>
               </div>
             </div>

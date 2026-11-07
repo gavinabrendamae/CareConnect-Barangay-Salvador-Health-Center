@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import PatientList from './PatientList.jsx';
 import PatientForm from './PatientForm.jsx';
 import StaffPanel from './StaffPanel.jsx';
-import RolesPanel, { PendingApprovals } from './RolesPanel.jsx';
+import { PendingApprovals } from './RolesPanel.jsx';
 
 // One sidebar item, two separate sections (like the Immunization / Family Planning cards): Residents and Staff.
 export default function PeoplePanel({ pending = 0 }) {
@@ -33,7 +33,6 @@ export default function PeoplePanel({ pending = 0 }) {
           {isAdmin && pending > 0 && <div className="col-12"><PendingApprovals ver={ver} onChanged={() => setVer((n) => n + 1)} /></div>}
           <div className="col-12"><PatientForm /></div>
           <div className="col-12"><PatientList /></div>
-          {isAdmin && <div className="col-12"><RolesPanel group="residents" ver={ver} onChanged={() => setVer((n) => n + 1)} /></div>}
         </>
       )}
     </div>

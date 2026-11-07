@@ -6,6 +6,12 @@ import PatientPicker from './PatientPicker.jsx';
 import { SYMPTOM_CATEGORIES, guessCategory, splitCategories, joinCategories } from '../lib/symptoms.js';
 
 const blank = { bp_systolic: '', bp_diastolic: '', weight_kg: '', height_cm: '', temperature_c: '', pulse_rate: '', chief_complaint: '', symptom_category: '' };
+// Purpose of the visit comes first. Only "sick" needs symptoms; check-ups need no chief complaint.
+const PURPOSES = [
+  { key: 'sick', label: 'May sintomas / Sick', icon: 'bi-thermometer-half' },
+  { key: 'checkup', label: 'Regular check-up / Follow-up', icon: 'bi-clipboard2-check', cat: 'Regular check-up', reason: 'Regular check-up' },
+  { key: 'prenatal', label: 'Prenatal check-up (Buntis)', icon: 'bi-heart', cat: 'Buntis / Prenatal', reason: 'Prenatal check-up' },
+];
 const num = (v) => (v === '' ? null : Number(v));
 
 /**
@@ -21,6 +27,10 @@ export default function IntakePanel() {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [catManual, setCatManual] = useState(false); // true once the BHW picks a category by hand
+  const [purpose, setPurpose] = useState('');          // '', 'sick', 'checkup', 'prenatal'
+  const [resetKey, setResetKey] = useState(0);     // bumps after each saved patient -> fresh form + fresh search box
+  const sick = purpose === 'sick';
+  const purposeInfo = PURPOSES.find((p) => p.key === purpose);
 
   const loadPending = useCallback(async () => {
     const { data } = await supabase.from('queue')
@@ -52,6 +62,7 @@ export default function IntakePanel() {
     setQueueItem(null);
     setMsg(null);
     setCatManual(false);
+    setPurpose('');
   }
 
   function takeVitals(item) {
@@ -59,6 +70,7 @@ export default function IntakePanel() {
     setQueueItem(item);
     const text = item.reason && item.reason !== 'New patient' ? item.reason : '';
     setCatManual(false);
+    setPurpose(text && !/check-?up|follow/i.test(text) ? 'sick' : '');
     setF({ ...blank, chief_complaint: text, symptom_category: guessCategory(text) });
     setMsg(null);
   }
@@ -78,8 +90,11 @@ export default function IntakePanel() {
   async function submit(e) {
     e.preventDefault();
     setMsg(null);
-    if (!f.chief_complaint.trim()) return setMsg({ type: 'danger', text: 'Chief complaint (sintomas) is required.' });
-    if (!f.symptom_category) return setMsg({ type: 'danger', text: 'Please choose at least one symptom category.' });
+    if (!purpose) return setMsg({ type: 'danger', text: 'Choose the purpose of the visit first.' });
+    if (sick && !f.chief_complaint.trim()) return setMsg({ type: 'danger', text: 'Chief complaint (sintomas) is required for a sick visit.' });
+    if (sick && !f.symptom_category) return setMsg({ type: 'danger', text: 'Please choose at least one symptom category.' });
+    const complaint = f.chief_complaint.trim() || purposeInfo?.reason || '';
+    const category = sick ? f.symptom_category : purposeInfo.cat;
     if ((f.bp_systolic === '') !== (f.bp_diastolic === '')) return setMsg({ type: 'danger', text: 'Enter both systolic and diastolic blood pressure.' });
     if (f.bp_systolic === '' && f.weight_kg === '' && f.height_cm === '' && f.temperature_c === '' && f.pulse_rate === '') {
       return setMsg({ type: 'danger', text: 'Enter at least one vital sign.' });
@@ -101,7 +116,7 @@ export default function IntakePanel() {
       bp_systolic: num(f.bp_systolic), bp_diastolic: num(f.bp_diastolic),
       weight_kg: num(f.weight_kg), height_cm: num(f.height_cm),
       temperature_c: num(f.temperature_c), pulse_rate: num(f.pulse_rate),
-      chief_complaint: f.chief_complaint.trim(), symptom_category: f.symptom_category, recorded_by: user.id,
+      chief_complaint: complaint, symptom_category: category, recorded_by: user.id,
     }).select('id').single();
     if (error) { setBusy(false); return setMsg({ type: 'danger', text: error.message }); }
 
@@ -112,7 +127,7 @@ export default function IntakePanel() {
         .eq('status', 'for_vitals').gte('created_at', startOfTodayISO()).limit(1);
       qid = open?.[0]?.id;
     }
-    const handoff = { status: 'waiting', vitals_id: vit.id, reason: f.chief_complaint.trim() };
+    const handoff = { status: 'waiting', vitals_id: vit.id, reason: complaint };
     const { error: qErr } = qid
       ? await supabase.from('queue').update(handoff).eq('id', qid)
       : await supabase.from('queue').insert({ patient_id: patient.id, queued_by: user.id, ...handoff });
@@ -120,8 +135,10 @@ export default function IntakePanel() {
     if (qErr) return setMsg({ type: 'warning', text: `Vitals saved, but the patient could not be passed to the queue: ${qErr.message}` });
 
     setMsg({ type: 'success', text: `${fullName(patient)} was added to the queue.` });
-    setPatient(null); setQueueItem(null); setF(blank); setCatManual(false);
+    setPatient(null); setQueueItem(null); setF(blank); setCatManual(false); setPurpose('');
+    setResetKey((k) => k + 1);
     loadPending();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const b = bmi(f.weight_kg, f.height_cm);
@@ -145,7 +162,7 @@ export default function IntakePanel() {
         </div>
         <div className="panel-card">
           <h5 className="mb-3">Find Resident</h5>
-          <PatientPicker value={patient} onChange={pick} />
+          <PatientPicker key={resetKey} value={patient} onChange={pick} />
           {patient && !queueItem && (
             <button className="btn btn-outline-primary-custom" onClick={checkIn}>Check in for vitals</button>
           )}
@@ -153,7 +170,7 @@ export default function IntakePanel() {
       </div>
 
       <div className="col-lg-7">
-        <form className="panel-card" onSubmit={submit}>
+        <form key={resetKey} className="panel-card" onSubmit={submit}>
           <h5 className="mb-3">Patient Intake — Vitals &amp; Triage</h5>
           {patient
             ? <div className="note-box mb-3"><strong>{fullName(patient)}</strong> · {calcAge(patient.birth_date)} yrs · {patient.purok}</div>
@@ -175,27 +192,39 @@ export default function IntakePanel() {
                 <input type="number" step="0.1" min="0" className="form-control" value={f.height_cm} onChange={set('height_cm')} /></div>
               <div className="col-12 col-md-4"><label className="form-label">BMI</label>
                 <input className="form-control" value={b ?? '—'} readOnly /></div>
-              <div className="col-12"><label className="form-label required">Chief complaint (sintomas)</label>
-                <textarea rows="2" className="form-control" placeholder="e.g. Lagnat for one month" value={f.chief_complaint} onChange={setComplaint} /></div>
-              <div className="col-12"><label className="form-label required">Symptom category (pwedeng more than one)</label>
+              <div className="col-12"><label className="form-label required">Purpose of visit</label>
                 <div className="d-flex flex-wrap gap-2">
-                  {SYMPTOM_CATEGORIES.map((c) => {
-                    const sel = splitCategories(f.symptom_category);
-                    const on = sel.includes(c);
-                    return (
-                      <button type="button" key={c}
-                        className={`btn btn-sm ${on ? 'btn-primary-custom' : 'btn-outline-secondary'}`}
-                        onClick={() => {
-                          setCatManual(true);
-                          const next = on ? sel.filter((x) => x !== c) : SYMPTOM_CATEGORIES.filter((x) => x === c || sel.includes(x));
-                          setF({ ...f, symptom_category: joinCategories(next) });
-                        }}>{on ? '✓ ' : ''}{c}</button>
-                    );
-                  })}
-                  <button type="button" className="btn btn-sm btn-link" onClick={() => { setCatManual(true); setF({ ...f, symptom_category: joinCategories(SYMPTOM_CATEGORIES) }); }}>Select all</button>
-                  <button type="button" className="btn btn-sm btn-link text-danger" onClick={() => { setCatManual(true); setF({ ...f, symptom_category: '' }); }}>Clear</button>
+                  {PURPOSES.map((p) => (
+                    <button type="button" key={p.key} className={`btn btn-sm ${purpose === p.key ? 'btn-primary-custom' : 'btn-outline-secondary'}`} onClick={() => setPurpose(p.key)}>
+                      <i className={`bi ${p.icon} me-1`} />{p.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="form-text">Auto-pick galing sa sinulat mong sintomas — pwede mong dagdagan o bawasan.</div></div>
+                {!purpose && <div className="form-text">Pumili muna kung bakit pumunta ang pasyente.</div>}</div>
+              {purpose && (
+                <div className="col-12"><label className={`form-label${sick ? ' required' : ''}`}>{sick ? 'Chief complaint (sintomas)' : 'Notes (optional)'}</label>
+                  <textarea rows="2" className="form-control" placeholder={sick ? 'e.g. Lagnat for one month' : 'e.g. Monthly check-up, follow-up BP (pwedeng iwanang blangko)'} value={f.chief_complaint} onChange={sick ? setComplaint : set('chief_complaint')} /></div>
+              )}
+              {sick && (
+                <div className="col-12"><label className="form-label required">Symptom category (pwedeng more than one)</label>
+                  <div className="d-flex flex-wrap gap-2">
+                    {SYMPTOM_CATEGORIES.filter((c) => c !== 'Regular check-up').map((c) => {
+                      const sel = splitCategories(f.symptom_category);
+                      const on = sel.includes(c);
+                      return (
+                        <button type="button" key={c}
+                          className={`btn btn-sm ${on ? 'btn-primary-custom' : 'btn-outline-secondary'}`}
+                          onClick={() => {
+                            setCatManual(true);
+                            const next = on ? sel.filter((x) => x !== c) : SYMPTOM_CATEGORIES.filter((x) => x === c || sel.includes(x));
+                            setF({ ...f, symptom_category: joinCategories(next) });
+                          }}>{on ? '✓ ' : ''}{c}</button>
+                      );
+                    })}
+                    <button type="button" className="btn btn-sm btn-link text-danger" onClick={() => { setCatManual(true); setF({ ...f, symptom_category: '' }); }}>Clear</button>
+                  </div>
+                  <div className="form-text">Auto-pick galing sa sinulat mong sintomas — pwede mong dagdagan o bawasan.</div></div>
+              )}
             </div>
             <button className="btn btn-primary-custom mt-3" disabled={busy}>{busy ? 'Saving...' : 'Add to queue'}</button>
           </fieldset>

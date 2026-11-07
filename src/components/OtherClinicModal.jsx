@@ -6,8 +6,9 @@ import { fullName, ROLE_LABEL, formatDate } from '../lib/format.js';
 import { fullAddress, signRole } from '../lib/formPdf.js';
 import { exportLabRequestPDF } from '../lib/labRequestForm.js';
 
-const DEFAULT_NOTES = 'If the result is ABNORMAL, the patient may be admitted / managed by your hospital directly; a referral from the midwife is not required. If the result is NORMAL, the patient will upload a copy of the result to his/her CareConnect account and does not need to return to the health center.';
+const DEFAULT_NOTES = 'If the result is POSITIVE, the patient may be admitted / managed by your hospital directly; a referral from the midwife is not required. If the result is NEGATIVE, the patient will upload a copy of the result to his/her CareConnect account and does not need to return to the health center.';
 
+// Laboratory Request Form for a laboratory outside the health center (printed for the patient).
 export default function OtherClinicModal({ patient: p, tests, symptoms, onClose, onProceed }) {
   const { profile } = useAuth();
   const [patient, setPatient] = useState(null);
@@ -19,10 +20,11 @@ export default function OtherClinicModal({ patient: p, tests, symptoms, onClose,
     supabase.from('patients').select('*').eq('id', p.id).single().then(({ data }) => setPatient(data));
   }, [p.id]);
 
+  // mode = 'save' (PDF) or 'print'. Either one sends the patient to "waiting for lab" and frees the queue.
   async function act(mode) {
     if (!f.clinic.trim()) return setMsg({ type: 'danger', text: 'Please enter the hospital / clinic.' });
     setBusy(true); setMsg(null);
-    const win = mode === 'print' ? window.open('', '_blank') : null; 
+    const win = mode === 'print' ? window.open('', '_blank') : null; // opened now so the browser doesn't block it
     try {
       await exportLabRequestPDF({ patient, clinic: f.clinic.trim(), clinicAddress: f.clinicAddress.trim(), symptoms: f.symptoms.trim(), notes: f.notes.trim(), tests, midwife: fullName(profile), midwifeRole: ROLE_LABEL[profile?.role], mode, win });
     } catch (err) { win?.close(); setBusy(false); return setMsg({ type: 'danger', text: err.message }); }

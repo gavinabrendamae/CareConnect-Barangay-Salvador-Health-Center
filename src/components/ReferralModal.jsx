@@ -3,16 +3,26 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
 import { calcAge, formatDate, fullName, ROLE_LABEL } from '../lib/format.js';
-import { exportReferralPDF, FAMILY_ILLNESSES } from '../lib/referral.js';
 import { CLINIC_NAME, fullAddress } from '../lib/formPdf.js';
 
+function savePdf(b64, name) {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) u8[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// The hospital referral form. Opens from a positive lab result.
 export default function ReferralModal({ lab, patient: patientProp, onClose, onSaved }) {
   const { user, profile } = useAuth();
   const [patient, setPatient] = useState(null);
   const [vitals, setVitals] = useState(null);
   const [existing, setExisting] = useState(null);
-  const [f, setF] = useState({ hospital: '', diagnosis: '', reason: 'Abnormal laboratory result — needs further evaluation and management at a hospital.', clinical_summary: '', treatment_given: '' });
-  const [d, setD] = useState({ spouse_name: '', spouse_birth: '', symptoms: '', philhealth: '', family: {} });
+  const [f, setF] = useState({ hospital: '', diagnosis: '', reason: 'Positive laboratory result — needs further evaluation and management at a hospital.', clinical_summary: '', treatment_given: '' });
+  const [d, setD] = useState({ symptoms: '', hospital_address: '' });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
@@ -26,28 +36,23 @@ export default function ReferralModal({ lab, patient: patientProp, onClose, onSa
         supabase.from('consultations').select('diagnosis, complaint').eq('patient_id', pid).order('consulted_at', { ascending: false }).limit(1),
       ]);
       setPatient(p.data);
-      let guardian = null;
-      if (p.data?.household_head_id) {
-        const g = await supabase.from('patients').select('first_name, middle_name, last_name, suffix, birth_date').eq('id', p.data.household_head_id).single();
-        guardian = g.data ?? null;
-      }
       setVitals(v.data?.[0] ?? null);
       if (r.data?.[0]) { setExisting(r.data[0]); setF((x) => ({ ...x, ...r.data[0] })); setD((x) => ({ ...x, ...(r.data[0].details ?? {}) })); return; }
       const complaint = v.data?.[0]?.chief_complaint || c.data?.[0]?.complaint || '';
-      setD((x) => ({ ...x, symptoms: complaint, spouse_name: guardian ? fullName(guardian) : x.spouse_name, spouse_birth: guardian?.birth_date ?? x.spouse_birth }));
+      setD((x) => ({ ...x, symptoms: complaint }));
       setF((x) => ({
         ...x,
         diagnosis: c.data?.[0]?.diagnosis ?? '',
         clinical_summary: [
-          `${lab.tests}${lab.result_flag ? ` — ${lab.result_flag.toUpperCase()} result` : ''}.`,
+          `${lab.tests}${lab.result_flag ? ` — ${lab.result_flag === 'abnormal' ? 'POSITIVE' : 'NEGATIVE'} result` : ''}.`,
           lab.result_notes && `Findings: ${lab.result_notes}`,
         ].filter(Boolean).join(' '),
       }));
     })();
   }, [lab, patientProp]);
 
-  async function save(e) {
-    e.preventDefault();
+  // Saves the referral (once), emails the e-Slip to the patient's Gmail, and downloads a PDF copy.
+  async function issue(sendEmail) {
     setMsg(null);
     setBusy(true);
     let row = existing;
@@ -61,12 +66,19 @@ export default function ReferralModal({ lab, patient: patientProp, onClose, onSa
       setExisting(row);
       onSaved?.();
     }
-    try {
-      await exportReferralPDF({ patient, vitals, referral: row, referredBy: fullName(profile), referredRole: ROLE_LABEL[profile?.role] });
-      setMsg({ type: 'success', text: 'Referral saved and the PDF was downloaded. Print it and hand it to the patient.' });
-    } catch (err) { setMsg({ type: 'danger', text: err.message }); }
+    const notes = [];
+    let type = 'success';
+    const { data, error } = await supabase.functions.invoke('referral-send', { body: { referral_id: row.id, send: sendEmail } });
+    const problem = error?.message || data?.error;
+    if (problem) { type = 'warning'; notes.push(`Could not prepare the e-Slip: ${problem}`); }
+    else {
+      if (sendEmail) { notes.push(`e-Referral ${row.tracking_no ?? ''} was emailed to ${data.sent_to}.`); setExisting({ ...row, emailed_to: data.sent_to, emailed_at: new Date().toISOString() }); }
+      if (data.pdf_base64) { savePdf(data.pdf_base64, data.filename); notes.push('The e-Slip PDF was downloaded.'); }
+    }
+    setMsg({ type, text: notes.join(' ') });
     setBusy(false);
   }
+  const save = (e) => { e.preventDefault(); issue(Boolean(patient?.email)); };
 
   const locked = Boolean(existing);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -98,18 +110,16 @@ export default function ReferralModal({ lab, patient: patientProp, onClose, onSa
                     </div>
                   </div>
                   {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
-                  {locked && <div className="alert alert-info py-2">This referral was already issued. You can download the PDF again.</div>}
+                  {existing?.tracking_no && <div className="alert alert-light border py-2 small mb-2"><strong>Tracking No.:</strong> {existing.tracking_no}{existing.emailed_at && <> · emailed to <strong>{existing.emailed_to}</strong> on {formatDate(existing.emailed_at)}</>}</div>}
+                  {locked && <div className="alert alert-info py-2">This referral was already issued. You can resend the email or download the e-Slip PDF again.</div>}
+                  {!patient.email && <div className="alert alert-warning py-2">This patient has no email on file, so the e-Slip cannot be emailed. Add the email in the Master Patient List, or download the PDF instead.</div>}
                   <fieldset disabled={locked}>
                     <div className="mb-3"><label className="form-label required">Referred to (hospital / clinic)</label>
                       <input className="form-control" placeholder="e.g. Southern Isabela Medical Center" value={f.hospital} onChange={set('hospital')} required /></div>
+                    <div className="mb-3"><label className="form-label required">Hospital address</label>
+                      <input className="form-control" placeholder="e.g. Cabatuan Road, Santiago City, Isabela" value={d.hospital_address ?? ''} onChange={(e) => setD({ ...d, hospital_address: e.target.value })} required /></div>
                     <div className="mb-3"><label className="form-label">Impression / diagnosis</label>
                       <input className="form-control" placeholder="e.g. Suspected dengue" value={f.diagnosis ?? ''} onChange={set('diagnosis')} /></div>
-                    <div className="row g-2 mb-3">
-                      <div className="col-md-7"><label className="form-label">Name of Spouse / Guardian</label>
-                        <input className="form-control" value={d.spouse_name ?? ''} onChange={(e) => setD({ ...d, spouse_name: e.target.value })} /></div>
-                      <div className="col-md-5"><label className="form-label">Birthday</label>
-                        <input type="date" className="form-control" value={d.spouse_birth ?? ''} onChange={(e) => setD({ ...d, spouse_birth: e.target.value })} /></div>
-                    </div>
                     <div className="mb-3"><label className="form-label">Symptoms seen</label>
                       <textarea rows="2" className="form-control" value={d.symptoms ?? ''} onChange={(e) => setD({ ...d, symptoms: e.target.value })} /></div>
                     <div className="mb-3"><label className="form-label">Laboratory findings</label>
@@ -118,31 +128,18 @@ export default function ReferralModal({ lab, patient: patientProp, onClose, onSa
                       <textarea rows="2" className="form-control" value={f.treatment_given ?? ''} onChange={set('treatment_given')} /></div>
                     <div className="mb-1"><label className="form-label required">Reason for referral</label>
                       <textarea rows="2" className="form-control" value={f.reason} onChange={set('reason')} required /></div>
-                    <div className="mt-3 mb-2 fw-bold">Are you a member of PhilHealth?
-                      {['yes', 'no'].map((o) => (
-                        <label key={o} className="ms-3 fw-normal"><input type="radio" className="form-check-input me-1" name="ph" checked={d.philhealth === o} onChange={() => setD({ ...d, philhealth: o })} />{o === 'yes' ? 'Yes' : 'No'}</label>
-                      ))}
-                    </div>
-                    <div className="fw-bold mb-1">History of the family to the following illness:</div>
-                    <table className="table table-sm table-bordered mb-0 align-middle">
-                      <thead><tr><th>Illness</th><th className="text-center" style={{ width: 80 }}>Yes</th><th className="text-center" style={{ width: 80 }}>No</th></tr></thead>
-                      <tbody>
-                        {FAMILY_ILLNESSES.map((ill) => (
-                          <tr key={ill}><td>{ill}</td>
-                            {['yes', 'no'].map((o) => (
-                              <td className="text-center" key={o}><input type="radio" className="form-check-input" name={`fam-${ill}`} checked={d.family?.[ill] === o} onChange={() => setD({ ...d, family: { ...d.family, [ill]: o } })} /></td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </fieldset>
                 </>
               )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Close</button>
-              <button className="btn btn-danger" disabled={!patient || busy}><i className="bi bi-file-earmark-pdf me-1" />{busy ? 'Saving...' : locked ? 'Download PDF again' : 'Save & download PDF'}</button>
+              <button type="button" className="btn btn-outline-danger" disabled={!patient || busy || !f.hospital.trim() || !f.reason.trim() || !(d.hospital_address ?? '').trim()} onClick={() => issue(false)}>
+                <i className="bi bi-file-earmark-pdf me-1" />{locked ? 'Download e-Slip PDF' : 'Save & download e-Slip PDF'}
+              </button>
+              <button className="btn btn-danger" disabled={!patient || busy || !patient?.email}>
+                <i className="bi bi-send-check me-1" />{busy ? 'Sending...' : locked ? 'Resend e-Referral' : 'Approve & Send e-Referral'}
+              </button>
             </div>
           </form>
         </div>

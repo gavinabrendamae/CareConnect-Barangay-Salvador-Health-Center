@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase.js';
+import { supabase } from '../lib/supabase';
 import { fullName, formatDateTime, ROLE_LABEL } from '../lib/format.js';
 
 const ENTITIES = {
   '': 'All activity', medicine_batches: 'Stock-in', prescriptions: 'Dispensed medicine', consultations: 'Consultations',
-  patients: 'Patient records', vitals: 'Vitals', vaccinations: 'Vaccinations', medicines: 'Medicines', profiles: 'Accounts',
+  patients: 'Patient records', vitals: 'Vitals', vaccinations: 'Vaccinations', medicines: 'Medicines', profiles: 'Accounts', referrals: 'e-Referrals',
 };
 const ICON = { insert: 'bi-plus-circle text-success', update: 'bi-pencil-square text-primary' };
 

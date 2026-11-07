@@ -66,7 +66,7 @@ function LabItem({ lab, onChanged }) {
 
       {pending && lab.outside_clinic ? (
         <form className="mt-3" onSubmit={upload}>
-          <p className="small text-secondary mb-2">Once your result is out from the laboratory, upload a photo of it here. The midwife will see it right away, and if it is normal you do not need to come back to the health center. If it is abnormal, the hospital will take over your care.</p>
+          <p className="small text-secondary mb-2">Once your result is out from the laboratory, upload a photo of it here. The midwife will see it right away, and the midwife will review it with you. If it is negative you may not need to come back; if it is positive she will refer you to the hospital.</p>
           {msg && <div className={`alert alert-${msg.type} py-2`}>{msg.text}</div>}
           <input type="file" accept="image/*" className="form-control mb-2" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           {preview && <img src={preview} alt="Preview" className="lab-img mb-2" />}
@@ -84,6 +84,7 @@ function LabItem({ lab, onChanged }) {
   );
 }
 
+// Resident's laboratory requests: upload the result of a lab done at another clinic.
 export default function ResidentLabPanel() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
