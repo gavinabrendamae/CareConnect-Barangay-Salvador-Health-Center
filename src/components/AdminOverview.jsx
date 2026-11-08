@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { staffOr, noStaff } from '../lib/staffFilter.js';
-import { daysUntil, monthStartISO, startOfTodayISO, todayISO } from '../lib/format.js';
+import { daysUntil, dueToday, monthStartISO, startOfTodayISO, todayISO } from '../lib/format.js';
 import { splitCategories } from '../lib/symptoms.js';
 import { topCounts } from './BarList.jsx';
 import { CHART_COLORS, HBarChart, SymptomTrendGrid } from './Charts.jsx';
@@ -22,7 +22,7 @@ export default function AdminOverview() {
       const res = await Promise.all([
         noStaff(supabase.from('patients').select('id', { count: 'exact', head: true }), so),
         supabase.from('queue').select('status').gte('created_at', startOfTodayISO()).in('status', ['waiting', 'in_consultation']),
-        supabase.from('immunization_records').select('id', { count: 'exact', head: true }).gt('dose_no', 0).is('confirmed_at', null).lte('given_date', todayISO()),
+        supabase.from('immunization_records').select('id', { count: 'exact', head: true }).gt('dose_no', 0).is('confirmed_at', null).lte('given_date', dueToday()),
         supabase.from('public_medicine_stock').select('status'),
         supabase.from('medicine_batches').select('expiration_date').gt('quantity', 0),
         supabase.from('consultations').select('diagnosis, complaint, symptom_category').gte('consulted_at', month),

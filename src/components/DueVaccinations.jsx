@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { addDaysISO, formatDate, fullName, todayISO } from '../lib/format.js';
+import { addDueDaysISO, formatDate, fullName, dueToday } from '../lib/format.js';
 
 // Doses on the immunization cards that are due today (or overdue) or tomorrow and not yet confirmed as vaccinated.
 export default function DueVaccinations({ onReschedule }) {
@@ -9,11 +9,11 @@ export default function DueVaccinations({ onReschedule }) {
   useEffect(() => {
     supabase.from('immunization_records')
       .select('id, vaccine, dose_no, given_date, patient:patients(id, first_name, middle_name, last_name, suffix, birth_date, gender, purok)')
-      .gt('dose_no', 0).is('confirmed_at', null).lte('given_date', addDaysISO(1)).order('given_date')
+      .gt('dose_no', 0).is('confirmed_at', null).lte('given_date', addDueDaysISO(1)).order('given_date')
       .then(({ data }) => setRows(data ?? []));
   }, []);
 
-  const today = todayISO();
+  const today = dueToday();
   return (
     <div className="panel-card">
       <h5 className="mb-3">Vaccinations Due (today, overdue &amp; tomorrow)</h5>

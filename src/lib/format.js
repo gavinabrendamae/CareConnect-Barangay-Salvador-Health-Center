@@ -60,6 +60,23 @@ export function daysUntil(dateStr) {
   return Math.round((target - today) / 86400000);
 }
 
+// "Due date" clock: dates lapse at 5:00 PM (Philippine time). From 5 PM on, today already
+// counts as tomorrow for reminders, due vaccines and events.
+export const CUTOFF_HOUR = 17;
+function manilaParts() {
+  const m = new Date(Date.now() + 8 * 3600000); // shift to UTC+8, read with UTC getters
+  return { y: m.getUTCFullYear(), mo: m.getUTCMonth(), d: m.getUTCDate(), h: m.getUTCHours() };
+}
+export function addDueDaysISO(n = 0) {
+  const { y, mo, d, h } = manilaParts();
+  const t = new Date(Date.UTC(y, mo, d + n + (h >= CUTOFF_HOUR ? 1 : 0)));
+  return t.toISOString().slice(0, 10);
+}
+export function dueToday() { return addDueDaysISO(0); }
+export function dueDaysUntil(dateStr) {
+  return Math.round((Date.parse(`${dateStr}T00:00:00Z`) - Date.parse(`${dueToday()}T00:00:00Z`)) / 86400000);
+}
+
 export const PH_PHONE = /^(09|\+639)\d{9}$/;
 
 export function startOfTodayISO() {
@@ -85,6 +102,7 @@ export function bmi(weightKg, heightCm) {
   return Math.round((Number(weightKg) / (m * m)) * 10) / 10;
 }
 
+// ── Patient type vs. age rules ──
 export const PATIENT_TYPES = ['Infant', 'Child', 'Adult', 'Senior Citizen', 'Pregnant', 'Person with Disability'];
 
 export function ageInMonths(birthDate) {
@@ -96,13 +114,15 @@ export function ageInMonths(birthDate) {
   return m;
 }
 
+// Returns an error message, or '' when the type fits the age.
+// Pregnant and Person with Disability have no age restriction.
 export function patientTypeError(birthDate, type) {
   const months = ageInMonths(birthDate);
   if (months === null || !type) return '';
   if (months < 0) return 'Birth date cannot be in the future.';
   const years = Math.floor(months / 12);
   switch (type) {
-    case 'Infant': return months > 12 ? 'Infant must be 12 months old or younger.' : '';
+    case 'Infant': return months > 12 ? 'Infant must be 12 months old or younger. Choose Child, Adult or Senior Citizen.' : '';
     case 'Infant / Child': return years >= 18 ? 'A person aged 18 or older is an Adult, not an Infant / Child.' : '';
     case 'Child': return months <= 12 || years >= 18 ? (years >= 18 ? 'A person aged 18 or older is an Adult, not a Child.' : 'Child must be older than 12 months. Choose Infant instead.') : '';
     case 'Adult': return years < 18 ? 'Adult must be 18 years old or above.' : (years >= 60 ? 'A person aged 60 or older is a Senior Citizen.' : '');

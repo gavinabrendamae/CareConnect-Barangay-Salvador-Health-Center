@@ -252,11 +252,10 @@ input::-ms-reveal, input::-ms-clear{ display:none; }
 .imm-tag{ font-size:.68rem; color:#8a6d00; font-weight:600; margin-top:2px; }
 .imm-tag.ok{ color:#0b6b3a; }
 .imm-undo{ border:0; background:none; color:#6c757d; font-size:.65rem; text-decoration:underline; padding:0; }
-/* resident view: vaccinated = green, not yet vaccinated = plain gray */
+
 .imm-card.readonly .imm-ok{ color:#0b6b3a; font-weight:700; }
 .imm-card.readonly .imm-soon{ color:#6b7785; font-weight:500; }
 
-/* ── Printing / PDF of the immunization card  ── */
 .imm-exporting{ width:1000px; max-width:none; -webkit-print-color-adjust:exact; }
 .imm-exporting .imm-noprint{ display:none !important; }
 .imm-exporting .imm-sched > *{ visibility:hidden; }
@@ -280,7 +279,6 @@ input::-ms-reveal, input::-ms-clear{ display:none; }
   @page{ size:8.27in 5.83in; margin:6mm; }
 }
 
-/* ── Dashboard top bar  ── */
 .navbar.dash-nav{ background:var(--primary); box-shadow:0 1px 6px rgba(0,0,0,.15); color:#fff; }
 .dash-nav .navbar-brand{ color:#fff !important; }
 .dash-nav .text-end .fw-semibold{ color:#fff; }
@@ -288,7 +286,6 @@ input::-ms-reveal, input::-ms-clear{ display:none; }
 .dash-nav-btn{ border-color:#fff !important; color:#fff !important; }
 .dash-nav-btn:hover{ background:#fff !important; color:var(--primary) !important; }
 
-/* ── Resident dashboard ── */
 body.theme-light{ --primary:#2b78b8; --primary-dark:#1F4A78; }
 body.theme-light .stat-card{ background:#e3f3f6; border-color:#97D5E0; color:#1F375D; }
 body.theme-light .stat-card .num{ color:#1F375D; }
@@ -343,15 +340,14 @@ body.theme-light .ann-section{ color:#2b78b8; }
 .site-nav .navbar-toggler-icon{ filter: invert(1); }
 .site-nav .btn-primary-custom{ border:1px solid rgba(255,255,255,.55); }
 
-/* ===== 3D press buttons (blue) — ilagay sa DULO ng styles.css ===== */
 .btn-primary-custom,
 .dash-nav-btn{
   position: relative;
   transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
 }
-/* solid blue buttons: Login, Register, Save, Add to queue, ... */
+
 .btn-primary-custom{
-  box-shadow: 0 6px 0 #082f57;            /* darker blue edge = the "thickness" */
+  box-shadow: 0 6px 0 #082f57;           
 }
 .btn-primary-custom:hover:not(:disabled){
   transform: translateY(4px);
@@ -362,16 +358,14 @@ body.theme-light .ann-section{ color:#2b78b8; }
   box-shadow: 0 0 0 #082f57;
 }
 .btn-primary-custom:disabled{ box-shadow: 0 6px 0 #082f57; }
-/* small buttons in tables get a thinner edge */
 .btn-sm.btn-primary-custom{ box-shadow: 0 4px 0 #082f57; }
 .btn-sm.btn-primary-custom:hover:not(:disabled){ transform: translateY(2px); box-shadow: 0 2px 0 #082f57; }
 .btn-sm.btn-primary-custom:active:not(:disabled){ transform: translateY(4px); box-shadow: 0 0 0 #082f57; }
-/* Login button on the dark navbar */
+
 .site-nav .btn-primary-custom{ box-shadow: 0 6px 0 rgba(0,0,0,.55); }
 .site-nav .btn-primary-custom:hover:not(:disabled){ box-shadow: 0 2px 0 rgba(0,0,0,.55); }
 .site-nav .btn-primary-custom:active:not(:disabled){ box-shadow: 0 0 0 rgba(0,0,0,.55); }
 
-/* Log out button (header of the dashboards) */
 .dash-nav-btn{ box-shadow: 0 5px 0 rgba(0,0,0,.35); }
 .dash-nav-btn:hover{ transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .dash-nav-btn:active{ transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,.35); }
@@ -386,7 +380,7 @@ form .btn-primary-custom:not(.btn-sm){ margin-bottom: 6px; }
 .service-card, .specialist-card{
   position: relative;
   overflow: hidden;
-  isolation: isolate;               /* keeps the circle behind the text */
+  isolation: isolate;          
 }
 .service-card::before, .specialist-card::before{
   content: '';
@@ -400,10 +394,9 @@ form .btn-primary-custom:not(.btn-sm){ margin-bottom: 6px; }
   z-index: -1;
 }
 .service-card:hover::before, .specialist-card:hover::before{
-  width: 700px; height: 700px;      /* grows from the center until it covers the whole card */
+  width: 700px; height: 700px;      
 }
 
-/* text / icons switch to white while the card is filled */
 .service-card h5, .service-card p, .service-card .service-icon, .service-card .service-icon i,
 .specialist-card h6, .specialist-card .role, .specialist-card .avatar-initials{
   transition: color .3s ease, background-color .3s ease, box-shadow .3s ease;

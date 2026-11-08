@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatDate } from '../lib/format.js';
-import { manilaToday } from '../lib/loginCode.js';
+import { dueToday as manilaToday } from '../lib/format.js';
 import DatePicker from './DatePicker.jsx';
 
 // ---- Landing page popup (public) ----
@@ -148,9 +148,9 @@ export default function AnnouncementsPanel() {
             <input className="form-control" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required /></div>
           <div className="mb-3"><label className="form-label required">Message</label>
             <textarea rows="4" className="form-control" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required /></div>
-          <div className="mb-3"><label className="form-label">Show until</label>
+          <div className="mb-3"><label className="form-label">Date of event</label>
             <DatePicker key={pickerKey} id="annUntil" minDate="today" maxDate={null} placeholder="dd/mm/yyyy (optional)" onChange={(v) => setF((x) => ({ ...x, expires_on: v }))} />
-            <div className="form-text">The announcement and the landing page badge disappear after this date. Leave blank to keep it until you delete it.</div></div>
+            </div>
           <div className="form-check mb-3">
             <input className="form-check-input" type="checkbox" id="annPin" checked={f.is_pinned} onChange={(e) => setF({ ...f, is_pinned: e.target.checked })} />
             <label className="form-check-label" htmlFor="annPin">Pin to top</label>

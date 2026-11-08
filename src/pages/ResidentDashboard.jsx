@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
-import { fullName, formatDate, formatDateTime, calcAge, daysUntil } from '../lib/format.js';
+import { fullName, formatDate, formatDateTime, calcAge, dueDaysUntil as daysUntil } from '../lib/format.js';
 import DashboardShell from '../components/DashboardShell.jsx';
 import Modal from '../components/Modal.jsx';
 import { Spinner } from '../components/ProtectedRoute.jsx';

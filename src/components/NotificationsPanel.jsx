@@ -1,4 +1,4 @@
-import { daysUntil, formatDate, formatDateTime } from '../lib/format.js';
+import { dueDaysUntil as daysUntil, formatDate, formatDateTime } from '../lib/format.js';
 
 export default function NotificationsPanel({ items, unread, markRead, markAllRead, upcoming = [] }) {
   return (

@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { addDaysISO, daysUntil, formatDate, todayISO } from '../lib/format.js';
+import { addDueDaysISO, dueDaysUntil, formatDate } from '../lib/format.js';
 import { fmtTime } from './EventsPanel.jsx';
 
-const keyOf = (ev) => `cc_ev_remind_${ev.id}_${daysUntil(ev.event_date) === 0 ? 'today' : 'eve'}`;
+const keyOf = (ev) => `cc_ev_remind_${ev.id}_${dueDaysUntil(ev.event_date) === 0 ? 'today' : 'eve'}`;
 const seen = (k) => { try { return localStorage.getItem(k) === '1'; } catch { return false; } };
 const mark = (k) => { try { localStorage.setItem(k, '1'); } catch { /* ignore */ } };
 
+// Pops up when the admin opens the dashboard the day before (and on the day of) an event.
+// Each reminder is shown once; closing it marks it as read.
 export default function EventReminder({ onOpenCalendar }) {
   const [list, setList] = useState([]);
 
   useEffect(() => {
-    supabase.from('events').select('*').gte('event_date', todayISO()).lte('event_date', addDaysISO(1))
+    supabase.from('events').select('*').gte('event_date', addDueDaysISO(0)).lte('event_date', addDueDaysISO(1))
       .order('event_date').order('start_time')
       .then(({ data }) => setList((data ?? []).filter((ev) => !seen(keyOf(ev)))));
   }, []);
@@ -24,8 +26,8 @@ export default function EventReminder({ onOpenCalendar }) {
     if (goCalendar) onOpenCalendar?.();
   }
 
-  const today = list.filter((e) => daysUntil(e.event_date) === 0);
-  const tomorrow = list.filter((e) => daysUntil(e.event_date) === 1);
+  const today = list.filter((e) => dueDaysUntil(e.event_date) === 0);
+  const tomorrow = list.filter((e) => dueDaysUntil(e.event_date) === 1);
   const Group = ({ title, color, items }) => items.length === 0 ? null : (
     <div className="mb-3">
       <div className={`fw-bold text-${color} mb-2`}>{title}</div>

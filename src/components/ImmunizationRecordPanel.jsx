@@ -28,7 +28,7 @@ export default function ImmunizationRecordPanel({ initialPatient = null, hint = 
       {patient
         ? (which === 'fp'
           ? <FamilyPlanningCard key={`${patient.id}-fp`} patientId={patient.id} editable />
-          : <ImmunizationCard key={`${patient.id}-main`} patientId={patient.id} editable />)
+          : <ImmunizationCard key={`${patient.id}-main`} patientId={patient.id} editable reschedule={patient.id === initialPatient?.id ? hint : ''} />)
         : <div className="text-secondary">Search a patient to open their immunization card (Infant, Child, Adult or Maternal). Women aged 15–49 also have a Family Planning card.</div>}
     </div>
   );
