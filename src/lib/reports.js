@@ -5,6 +5,17 @@ import { splitCategories } from './symptoms.js';
 import { fetchSymptomTrends } from './trends.js';
 
 export const BARANGAY_NAME = 'Barangay Salvador Health Center';
+const FACILITY_ADDRESS = 'Barangay Salvador, Santiago City, Isabela';
+
+// Loads a logo from /public/Resources as a data URL (null when the file is missing).
+async function loadLogo(name) {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}Resources/${name}`);
+    if (!res.ok || !(res.headers.get('content-type') || '').startsWith('image/')) return null;
+    const blob = await res.blob();
+    return await new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ok(null); fr.readAsDataURL(blob); });
+  } catch { return null; }
+}
 
 export const REPORT_TYPES = [
   { key: 'morbidity', label: 'Morbidity & Consultation Report', note: 'Top diagnoses, complaints and consultation log (for Barangay / LGU / DOH).' },
@@ -13,6 +24,12 @@ export const REPORT_TYPES = [
   { key: 'trends', label: 'Monthly Symptom Trends', note: 'Cases per symptom for every month in the period, with a line graph for each symptom.' },
   { key: 'residents', label: 'Resident Masterlist', note: 'Registered residents with totals per purok and per patient type.' },
 ];
+
+const fetchPullouts = (from, to) => fetchAll(() => supabase.from('batch_disposals')
+  .select('disposed_at, batch_no, quantity, expiration_date, reason, medicine:medicines(name, unit)')
+  .gte('disposed_at', dayStart(from)).lte('disposed_at', dayEnd(to)).order('disposed_at'));
+const pulloutRows = (rows) => rows.map((d) => [formatDate(d.disposed_at), d.medicine?.name ?? '', d.batch_no ?? '—', `${d.quantity} ${d.medicine?.unit ?? ''}`, formatDate(d.expiration_date), d.reason]);
+const PULLOUT_COLS = ['Pulled out on', 'Medicine', 'Batch no.', 'Qty', 'Expiration', 'Reason'];
 
 async function fetchAll(build) {
   const size = 1000;
@@ -46,8 +63,8 @@ export async function buildReport(type, from, to) {
       title: 'Morbidity & Consultation Report', subtitle: period, filename: `morbidity_${from}_${to}`,
       sections: [
         { heading: 'Summary', columns: ['Item', 'Count'], rows: [['Total consultations', rows.length], ['Unique patients', new Set(rows.map((r) => fullName(r.patient))).size]] },
-        { heading: 'Top diagnoses', columns: ['Diagnosis', 'Cases'], rows: tally(rows.map((r) => r.diagnosis?.toLowerCase())) },
-        { heading: 'Top complaints / symptoms', columns: ['Complaint', 'Cases'], rows: tally(rows.flatMap((r) => (r.symptom_category ? splitCategories(r.symptom_category) : [r.complaint]).map((x) => x?.toLowerCase()))).slice(0, 15) },
+        { heading: 'Diagnosis given', columns: ['Diagnosis', 'Cases'], rows: tally(rows.map((r) => r.diagnosis?.toLowerCase())) },
+        { heading: 'Symptoms', columns: ['Complaint', 'Cases'], rows: tally(rows.flatMap((r) => (r.symptom_category ? splitCategories(r.symptom_category) : [r.complaint]).map((x) => x?.toLowerCase()))).slice(0, 15) },
         { heading: 'Cases per purok', columns: ['Purok', 'Cases'], rows: tally(rows.map((r) => r.patient?.purok)) },
         {
           heading: 'Consultation log', columns: ['Date', 'Patient', 'Age', 'Sex', 'Purok', 'Complaint', 'Diagnosis'],
@@ -72,11 +89,12 @@ export async function buildReport(type, from, to) {
   }
 
   if (type === 'medicines') {
-    const [stock, batches, rx] = await Promise.all([
+    const [stock, batches, rx, pulled] = await Promise.all([
       fetchAll(() => supabase.from('public_medicine_stock').select('*').order('name')),
       fetchAll(() => supabase.from('medicine_batches').select('batch_no, quantity, expiration_date, medicine:medicines(name, unit)').gt('quantity', 0).order('expiration_date')),
       fetchAll(() => supabase.from('prescriptions').select('quantity, created_at, medicine:medicines(name, unit)')
         .gte('created_at', dayStart(from)).lte('created_at', dayEnd(to))),
+      fetchPullouts(from, to),
     ]);
     const used = {};
     rx.forEach((r) => { const k = r.medicine?.name ?? 'Unknown'; used[k] = { qty: (used[k]?.qty || 0) + r.quantity, unit: r.medicine?.unit ?? '' }; });
@@ -86,6 +104,7 @@ export async function buildReport(type, from, to) {
         { heading: 'Current stock (unexpired)', columns: ['Medicine', 'Category', 'Available', 'Status'], rows: stock.map((s) => [s.name, s.category ?? '', `${s.available_quantity} ${s.unit}`, s.status]) },
         { heading: 'Batches on hand (FEFO order)', columns: ['Medicine', 'Batch no.', 'Qty left', 'Expiration'], rows: batches.map((b) => [b.medicine?.name ?? '', b.batch_no ?? '—', `${b.quantity} ${b.medicine?.unit ?? ''}`, formatDate(b.expiration_date)]) },
         { heading: 'Dispensed in period', columns: ['Medicine', 'Total dispensed'], rows: Object.entries(used).sort((a, b) => b[1].qty - a[1].qty).map(([n, u]) => [n, `${u.qty} ${u.unit}`]) },
+        { heading: 'Pulled out in period (expired / expiring)', columns: PULLOUT_COLS, rows: pulloutRows(pulled) },
       ],
     };
   }
@@ -145,9 +164,9 @@ function drawTrendCharts(doc, { months, series }, startY) {
     const yMaxN = yMax <= 4 ? yMax : Math.ceil(yMax / 2) * 2;
     doc.setDrawColor(225, 233, 228); doc.setLineWidth(0.5);
     doc.roundedRect(x0, y, cw, ch, 4, 4);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(40, 55, 48);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
     doc.text(s.name.replace(/\b\w/g, (c) => c.toUpperCase()), x0 + 10, y + 16);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(100, 115, 108);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
     doc.text(`${s.total} total`, x0 + cw - 10, y + 17, { align: 'right' });
     const ticks = yMaxN <= 4 ? Array.from({ length: yMaxN + 1 }, (_, k) => k) : [0, yMaxN / 2, yMaxN];
     const py = (v) => T + (1 - v / yMaxN) * (B - T);
@@ -163,7 +182,7 @@ function drawTrendCharts(doc, { months, series }, startY) {
     for (let k = 1; k < n; k++) doc.line(px(k - 1), py(s.values[k - 1]), px(k), py(s.values[k]));
     doc.setFillColor(42, 120, 214);
     s.values.forEach((v, k) => doc.circle(px(k), py(v), 2.6, 'F'));
-    doc.setTextColor(40, 55, 48); doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0); doc.setFontSize(10);
     s.values.forEach((v, k) => { if (v > 0) doc.text(String(v), px(k), py(v) - 5, { align: 'center' }); });
     doc.setTextColor(0, 0, 0); doc.setLineWidth(0.5);
   });
@@ -177,13 +196,26 @@ export async function exportPDF(report, preparedBy) {
   const doc = new JsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const w = doc.internal.pageSize.getWidth();
 
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(19);
-  doc.text(BARANGAY_NAME.toUpperCase(), w / 2, 44, { align: 'center' });
-  doc.setFontSize(16); doc.text(report.title, w / 2, 66, { align: 'center' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(13);
-  doc.text(report.subtitle, w / 2, 85, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  const [brgyLogo, dohLogo] = await Promise.all([loadLogo('Logo.png'), loadLogo('doh-logo.png')]);
+  const LOGO = 64;
+  const addLogo = (img, x) => { if (img) { try { doc.addImage(img, img.includes('image/png') ? 'PNG' : 'JPEG', x, 28, LOGO, LOGO); } catch { /* skip */ } } };
+  addLogo(brgyLogo, 40);
+  addLogo(dohLogo, w - 40 - LOGO);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+  doc.text('Republic of the Philippines', w / 2, 40, { align: 'center' });
+  doc.text('Department of Health', w / 2, 54, { align: 'center' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+  doc.text(BARANGAY_NAME.toUpperCase(), w / 2, 72, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+  doc.text(FACILITY_ADDRESS, w / 2, 87, { align: 'center' });
+  doc.setLineWidth(2); doc.setDrawColor(0, 0, 0); doc.line(40, 104, w - 40, 104);
+  doc.setLineWidth(0.5);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(report.title, w / 2, 130, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
+  doc.text(report.subtitle, w / 2, 148, { align: 'center' });
 
-  let y = 108;
+  let y = 176;
   report.sections.forEach((s) => {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
     if (y > doc.internal.pageSize.getHeight() - 110) { doc.addPage(); y = 40; }
@@ -191,22 +223,32 @@ export async function exportPDF(report, preparedBy) {
     if (s.chart) { y = drawTrendCharts(doc, s.chart, y + 10); return; }
     autoTable(doc, {
       startY: y + 6, head: [s.columns], body: s.rows.length ? s.rows.map((r) => r.map(String)) : [[{ content: 'No records.', colSpan: s.columns.length }]],
-      styles: { fontSize: 10.5, cellPadding: 4 }, headStyles: { fillColor: [12, 76, 138], fontSize: 11 }, margin: { left: 40, right: 40 },
+      styles: { fontSize: 10.5, cellPadding: 4, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.4 }, headStyles: { fillColor: [225, 225, 225], textColor: [0, 0, 0], fontSize: 11, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [255, 255, 255] }, margin: { left: 40, right: 40 },
     });
     y = doc.lastAutoTable.finalY + 28;
   });
 
-  if (y > doc.internal.pageSize.getHeight() - 110) { doc.addPage(); y = 40; }
+  if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 40; }
   doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
-  doc.text(`Prepared by: ${preparedBy}`, 40, y + 20);
-  doc.text('______________________________', 40, y + 52);
-  doc.text('Noted by: Punong Barangay', 40, y + 68);
+  const pw = doc.internal.pageSize.getWidth();
+  const rx = pw / 2 + 20;
+  doc.text('Prepared by:', 40, y + 20);
+  doc.text('Noted by:', rx, y + 20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(preparedBy), 40, y + 56);
+  doc.text('Hon. Marky E. Labuesca', rx, y + 56);
+  doc.setFont('helvetica', 'normal');
+  doc.text('________________________', 40, y + 60);
+  doc.text('________________________', rx, y + 60);
   doc.setFontSize(10);
-  doc.text(`Generated ${new Date().toLocaleString('en-PH')} via CareConnect`, 40, y + 90);
+  doc.text('Health Center Staff', 40, y + 76);
+  doc.text('Punong Barangay', rx, y + 76);
+  const generated = `Generated ${new Date().toLocaleString('en-PH')} via CareConnect`;
 
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
-    doc.setPage(i); doc.setFontSize(10);
+    doc.setPage(i); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    if (i === pages) doc.text(generated, 40, doc.internal.pageSize.getHeight() - 20); // last page only
     doc.text(`Page ${i} of ${pages}`, w - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
   }
   doc.save(`${report.filename}.pdf`);

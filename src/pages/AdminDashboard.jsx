@@ -60,7 +60,6 @@ export default function AdminDashboard() {
       {tab === 'overview' && (
         <>
           <AdminOverview />
-          <div className="mt-4"><DueVaccinations onReschedule={(patient, hint) => { setResched({ patient, hint }); setTab('immrecord'); }} /></div>
         </>
       )}
       {tab === 'consult' && <ConsultDesk />}
@@ -74,7 +73,12 @@ export default function AdminDashboard() {
       {tab === 'medreq' && <MedicineRequestsPanel />}
       {tab === 'triage' && <IntakePanel />}
       {tab === 'fp' && <FamilyPlanningPanel />}
-      {tab === 'immrecord' && <ImmunizationRecordPanel key={resched?.patient?.id ?? 'none'} initialPatient={resched?.patient ?? null} hint={resched?.hint ?? ''} />}
+      {tab === 'immrecord' && (
+        <>
+          <div className="mb-4"><DueVaccinations onReschedule={(patient, hint) => { setResched({ patient, hint }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></div>
+          <ImmunizationRecordPanel key={resched?.patient?.id ?? 'none'} initialPatient={resched?.patient ?? null} hint={resched?.hint ?? ''} />
+        </>
+      )}
       {tab === 'profile' && <ProfilePanel />}
       {tab === 'dispense' && <DispenseLogPanel />}
       {tab === 'people' && <PeoplePanel pending={pendingReg} />}

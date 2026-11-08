@@ -212,7 +212,7 @@ export default function ImmunizationCard({ patientId, editable = false, forceKin
                               <input type="date" className={`imm-input ${d?.given_date ? '' : 'imm-empty'}`} min={d?.given_date && d.given_date < today && reschedule !== `${r.name} (dose ${n})` ? undefined : today}
                                 value={d?.given_date ?? ''} disabled={done} onChange={(e) => setDate(r.name, n, e.target.value)} title={`Dose ${n}`} />
                               {d?.given_date && !done && (
-                                reschedule === `${r.name} (dose ${n})` && d.given_date <= today
+                                reschedule === `${r.name} (dose ${n})` && d.given_date < dueToday()
                                   ? <div className="imm-tag imm-noprint" style={{ color: '#b02a37' }}>Overdue — pick a new date</div>
                                   : d.given_date < dueToday()
                                     ? <div className="imm-tag imm-noprint" style={{ color: '#b02a37' }}>Overdue <button type="button" className="imm-undo" onClick={() => confirm(r.name, n)}>already vaccinated?</button></div>

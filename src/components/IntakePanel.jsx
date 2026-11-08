@@ -146,7 +146,7 @@ export default function IntakePanel() {
   return (
     <div className="row g-4">
       <div className="col-lg-5">
-        <div className="panel-card mb-4">
+        <div className="panel-card cq-queue mb-4">
           <h5 className="mb-3">Waiting for Vitals <span className="badge bg-success ms-1">{pending.length}</span></h5>
           {pending.length === 0 ? <div className="text-secondary">No patients are waiting for vitals.</div> : (
             <ul className="list-unstyled mb-0">
@@ -160,7 +160,7 @@ export default function IntakePanel() {
             </ul>
           )}
         </div>
-        <div className="panel-card">
+        <div className="panel-card cq-walkin">
           <h5 className="mb-3">Find Resident</h5>
           <PatientPicker key={resetKey} value={patient} onChange={pick} />
           {patient && !queueItem && (
@@ -170,7 +170,7 @@ export default function IntakePanel() {
       </div>
 
       <div className="col-lg-7">
-        <form key={resetKey} className="panel-card" onSubmit={submit}>
+        <form key={resetKey} className="panel-card cq-lab" onSubmit={submit}>
           <h5 className="mb-3">Patient Intake — Vitals &amp; Triage</h5>
           {patient
             ? <div className="note-box mb-3"><strong>{fullName(patient)}</strong> · {calcAge(patient.birth_date)} yrs · {patient.purok}</div>
@@ -203,7 +203,7 @@ export default function IntakePanel() {
                 {!purpose && <div className="form-text">Pumili muna kung bakit pumunta ang pasyente.</div>}</div>
               {purpose && (
                 <div className="col-12"><label className={`form-label${sick ? ' required' : ''}`}>{sick ? 'Chief complaint (sintomas)' : 'Notes (optional)'}</label>
-                  <textarea rows="2" className="form-control" placeholder={sick ? 'e.g. Lagnat for one month' : 'e.g. Monthly check-up, follow-up BP (pwedeng iwanang blangko)'} value={f.chief_complaint} onChange={sick ? setComplaint : set('chief_complaint')} /></div>
+                  <textarea rows="2" className="form-control" placeholder={sick ? 'e.g. Lagnat for one week' : 'e.g. Monthly check-up, follow-up BP (optional)'} value={f.chief_complaint} onChange={sick ? setComplaint : set('chief_complaint')} /></div>
               )}
               {sick && (
                 <div className="col-12"><label className="form-label required">Symptom category (pwedeng more than one)</label>

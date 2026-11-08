@@ -413,3 +413,20 @@ form .btn-primary-custom:not(.btn-sm){ margin-bottom: 6px; }
 @media (prefers-reduced-motion: reduce){
   .service-card::before, .specialist-card::before{ transition: none; }
 }
+
+/* ===== Consultation desk: livelier cards ===== */
+.cq-stat{ border:0; color:#fff; box-shadow:0 6px 16px rgba(12,76,138,.15); transition:transform .15s ease, box-shadow .15s ease; }
+.cq-stat:hover{ transform:translateY(-2px); box-shadow:0 10px 22px rgba(12,76,138,.22); }
+.cq-stat .text-secondary{ color:rgba(255,255,255,.85) !important; }
+.cq-stat-icon{ width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex:0 0 auto; }
+.cq-stat.cq-warning{ background:linear-gradient(135deg,#f5a623,#f7c55c); }
+.cq-stat.cq-primary{ background:linear-gradient(135deg,#0C4C8A,#2f86d6); }
+.cq-stat.cq-secondary{ background:linear-gradient(135deg,#2a9d8f,#5cc8b8); }
+
+.cq-queue{ background:linear-gradient(180deg,#eef6ff 0,#fff 140px); border-top:4px solid #0C4C8A; box-shadow:0 4px 14px rgba(12,76,138,.08); }
+.cq-queue .table thead th{ background:#e3effc; color:#1F375D; border-bottom:0; }
+.cq-queue .table tbody tr:hover{ background:#f3f8ff; }
+.cq-lab{ background:linear-gradient(180deg,#fff8e6 0,#fff 140px); border-top:4px solid #f5a623; box-shadow:0 4px 14px rgba(245,166,35,.12); }
+.cq-lab .border-bottom{ border-color:#f3e3bd !important; }
+.cq-walkin{ background:linear-gradient(180deg,#e9f8f4 0,#fff 140px); border-top:4px solid #2a9d8f; box-shadow:0 4px 14px rgba(42,157,143,.1); }
+.cq-lab .form-control, .cq-lab .form-select{ background:#fff; }

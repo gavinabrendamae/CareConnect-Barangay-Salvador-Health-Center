@@ -15,6 +15,7 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
   const [patient, setPatient] = useState(null);
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+  const [orphans, setOrphans] = useState([]); // patient-uploaded results not yet reviewed and not tied to a waiting queue entry
   const q = useQueueCounts();
 
   const load = useCallback(async () => {
@@ -24,6 +25,10 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
       .in('status', ['waiting', 'in_consultation', 'awaiting_lab'])
       .order('created_at');
     if (err) setError(err.message); else setItems(data ?? []);
+    const up = await supabase.from('lab_requests')
+      .select('id, tests, outside_clinic, patient_id, resulted_at, patient:patients(id, first_name, middle_name, last_name, suffix, birth_date, purok)')
+      .eq('patient_uploaded', true).is('reviewed_at', null).eq('status', 'resulted').order('resulted_at');
+    setOrphans(up.data ?? []);
     setLoading(false);
   }, []);
 
@@ -55,6 +60,24 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
     if (err) setError(err.message); else load();
   }
 
+  // Uploaded results whose patient is not in the "awaiting lab" list: group by patient.
+  const inQueue = new Set(labWait.flatMap((i) => (i.lab_requests ?? []).map((l) => l.id)));
+  const orphanGroups = Object.values(orphans.filter((l) => !inQueue.has(l.id)).reduce((m, l) => {
+    (m[l.patient_id] ??= { patient: l.patient, labs: [] }).labs.push(l);
+    return m;
+  }, {}));
+
+  async function reviewUploaded(g) {
+    setError('');
+    const { data, error: err } = await supabase.from('queue')
+      .insert({ patient_id: g.patient.id, queued_by: user.id, status: 'awaiting_lab', reason: 'Laboratory' }).select('id, created_at').single();
+    if (err) return setError(err.message);
+    const { error: e2 } = await supabase.from('lab_requests').update({ queue_id: data.id }).in('id', g.labs.map((l) => l.id));
+    if (e2) return setError(e2.message);
+    onOpenLab?.({ id: data.id, status: 'awaiting_lab', created_at: data.created_at, reason: 'Laboratory', patient: g.patient, vitals: null, lab_requests: g.labs });
+    load();
+  }
+
   async function start(item) {
     await setStatus(item.id, 'in_consultation');
     onStartConsult({ ...item, status: 'in_consultation' });
@@ -69,15 +92,15 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
         ['With BHW (vitals pending)', q.forVitals, 'secondary', 'bi-heart-pulse'],
       ].map(([label, n, color, icon]) => (
         <div className="col-12 col-md-4" key={label}>
-          <div className="panel-card d-flex align-items-center gap-3 py-3">
-            <i className={`bi ${icon} fs-2 text-${color}`} />
+          <div className={`panel-card cq-stat cq-${color} d-flex align-items-center gap-3 py-3`}>
+            <span className="cq-stat-icon"><i className={`bi ${icon}`} /></span>
             <div><div className="fs-3 fw-bold lh-1">{n}</div><div className="small text-secondary">{label}</div></div>
           </div>
         </div>
       ))}
     </div>
     <div>
-        <div className="panel-card">
+        <div className="panel-card cq-queue">
           <h5 className="mb-3">Patient Queue <span className="badge bg-success ms-1">{active.length}</span></h5>
           {error && <div className="alert alert-danger">{error}</div>}
           {loading ? <div className="text-secondary">Loading...</div> : active.length === 0 ? (
@@ -118,9 +141,20 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
           )}
         </div>
 
-        <div className="panel-card mt-4">
-          <h5 className="mb-3"><i className="bi bi-hourglass-split me-2 text-warning" />Waiting for Lab Results <span className="badge bg-warning text-dark ms-1">{labWait.length}</span></h5>
-          {labWait.length === 0 ? <div className="text-secondary">No patients waiting for lab results.</div> : labWait.map((it) => (
+        <div className="panel-card cq-lab mt-4">
+          <h5 className="mb-3"><i className="bi bi-hourglass-split me-2 text-warning" />Waiting for Lab Results <span className="badge bg-warning text-dark ms-1">{labWait.length + orphanGroups.length}</span></h5>
+          {labWait.length === 0 && orphanGroups.length === 0 && <div className="text-secondary">No patients waiting for lab results.</div>}
+          {orphanGroups.map((g) => (
+            <div key={g.patient.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-2">
+              <div>
+                <strong>{fullName(g.patient)}</strong>
+                <div className="small text-secondary">{g.labs.map((l) => l.tests).join('; ')}</div>
+                <span className="badge bg-info text-dark"><i className="bi bi-cloud-check me-1" />Result uploaded by the patient — for review</span>
+              </div>
+              <div className="text-nowrap">{onOpenLab && <button className="btn btn-sm btn-primary-custom" onClick={() => reviewUploaded(g)}>Review result</button>}</div>
+            </div>
+          ))}
+          {labWait.map((it) => (
             <div key={it.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-2">
               <div>
                 <strong>{fullName(it.patient)}</strong>
@@ -140,7 +174,7 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
             </div>
           ))}
         </div>
-        <form className="panel-card mt-4" onSubmit={addToQueue}>
+        <form className="panel-card cq-walkin mt-4" onSubmit={addToQueue}>
           <h5 className="mb-1">Add Walk-in to Queue</h5>
           <p className="text-secondary small mb-3">Patients normally arrive here automatically once the BHW has taken their vitals. Use this only to skip the vitals step.</p>
           <div className="row g-3 align-items-start">

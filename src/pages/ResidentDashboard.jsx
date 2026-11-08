@@ -168,7 +168,7 @@ export default function ResidentDashboard() {
   if (patient === undefined) return <Spinner />;
 
   const hasFp = vaccines.some((v) => v.vaccine_name === DEPO);
-  const nameOf = (id) => (id === patient?.id ? 'Me' : fullName(members.find((m) => m.id === id)) || 'Family member');
+  const nameOf = (id) => (id === patient?.id ? fullName(patient) : fullName(members.find((m) => m.id === id)) || 'Family member');
   const allVax = [...vaccines, ...famVax].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
   const next = allVax.find((v) => v.status === 'scheduled' && daysUntil(v.scheduled_date) >= 0);
   const lastVisit = consults[0]?.consulted_at;

@@ -40,14 +40,18 @@ export default function BHWDashboard() {
       <EventReminder onOpenCalendar={() => setTab('events')} />
       {tab === 'dashboard' && (
         <div className="row g-4">
-          <div className="col-12"><DueVaccinations onReschedule={(patient, hint) => { setResched({ patient, hint }); setTab('immrecord'); }} /></div>
           <div className="col-12"><QueueStatus /></div>
         </div>
       )}
       {tab === 'register' && (
         <div className="row"><div className="col-xl-10"><PatientForm /></div></div>
       )}
-      {tab === 'immrecord' && <ImmunizationRecordPanel key={resched?.patient?.id ?? 'none'} initialPatient={resched?.patient ?? null} hint={resched?.hint ?? ''} />}
+      {tab === 'immrecord' && (
+        <>
+          <div className="mb-4"><DueVaccinations onReschedule={(patient, hint) => { setResched({ patient, hint }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></div>
+          <ImmunizationRecordPanel key={resched?.patient?.id ?? 'none'} initialPatient={resched?.patient ?? null} hint={resched?.hint ?? ''} />
+        </>
+      )}
       {tab === 'labq' && <LabQueuePanel />}
       {tab === 'medreq' && <MedicineRequestsPanel />}
       {tab === 'dispense' && <DispenseLogPanel />}

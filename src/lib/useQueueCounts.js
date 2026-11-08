@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
+import { startOfTodayISO } from './format.js';
 
 // Live counts of the patient queue. `onNew(n)` fires when n new patients
 // become "waiting" for the Midwife/Doctor (i.e. BHW finished their vitals).
@@ -10,11 +11,11 @@ export function useQueueCounts(onNew) {
   cb.current = onNew;
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('queue').select('id, status').in('status', ['for_vitals', 'waiting', 'in_consultation', 'awaiting_lab']);
+    const { data } = await supabase.from('queue').select('id, status, created_at').in('status', ['for_vitals', 'waiting', 'in_consultation', 'awaiting_lab']);
     const rows = data ?? [];
     const waitingIds = rows.filter((r) => r.status === 'waiting').map((r) => r.id);
     setCounts({
-      forVitals: rows.filter((r) => r.status === 'for_vitals').length,
+      forVitals: rows.filter((r) => r.status === 'for_vitals' && r.created_at >= startOfTodayISO()).length,
       waiting: waitingIds.length,
       inConsult: rows.filter((r) => r.status === 'in_consultation').length,
       awaitingLab: rows.filter((r) => r.status === 'awaiting_lab').length,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
+import Modal from './Modal.jsx';
 import { formatDate, daysUntil, todayISO } from '../lib/format.js';
 
 const EXPIRING_DAYS = 30;
@@ -21,13 +22,30 @@ export default function InventoryPanel() {
   const [med, setMed] = useState({ name: '', unit: 'pcs', reorder_level: 20, category: '' });
   const [batch, setBatch] = useState({ medicine_id: '', batch_no: '', quantity: '', expiration_date: '' });
   const [msg, setMsg] = useState(null);
+  const [disposals, setDisposals] = useState([]);
+  const [confirmList, setConfirmList] = useState(null); // batches waiting for pull-out confirmation
+  const [busyPull, setBusyPull] = useState(false);
+
+  async function pullOut() {
+    const list = confirmList;
+    setBusyPull(true); setMsg(null);
+    for (const b of list) {
+      const { error } = await supabase.rpc('pull_out_batch', { p_batch_id: b.id });
+      if (error) { setMsg({ type: 'danger', text: error.message }); setBusyPull(false); setConfirmList(null); load(); return; }
+    }
+    setBusyPull(false); setConfirmList(null);
+    setMsg({ type: 'success', text: 'Pulled out and recorded in the pull-out history.' });
+    load();
+  }
 
   const load = useCallback(async () => {
-    const [m, b, s] = await Promise.all([
+    const [m, b, s, dp] = await Promise.all([
       supabase.from('medicines').select('*').order('name'),
       supabase.from('medicine_batches').select('*, medicine:medicines(name, unit)').gt('quantity', 0).order('expiration_date'),
       supabase.from('public_medicine_stock').select('*').order('name'),
+      supabase.from('batch_disposals').select('*, medicine:medicines(name, unit)').order('disposed_at', { ascending: false }).limit(30),
     ]);
+    setDisposals(dp.data ?? []);
     setMedicines(m.data ?? []);
     setBatches(b.data ?? []);
     setStock(s.data ?? []);
@@ -131,10 +149,16 @@ export default function InventoryPanel() {
         <div className="panel-card">
           <h5 className="mb-1">FEFO Batch Order</h5>
           <p className="text-secondary small">Earliest expiration first — this is the order stock is dispensed in. Expired batches are never dispensed.</p>
+          {batches.some((b) => daysUntil(b.expiration_date) < 0) && (
+            <div className="alert alert-danger d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+              <span><i className="bi bi-exclamation-triangle me-1" /><strong>{batches.filter((b) => daysUntil(b.expiration_date) < 0).length}</strong> expired batch(es) still in stock — take them out of the health center and pull them out here.</span>
+              <button type="button" className="btn btn-sm btn-danger" onClick={() => setConfirmList(batches.filter((b) => daysUntil(b.expiration_date) < 0))}>Pull out all expired</button>
+            </div>
+          )}
           {batches.length === 0 ? <div className="text-secondary">No batches in stock.</div> : (
             <div className="table-responsive">
               <table className="table mb-0">
-                <thead><tr><th>Medicine</th><th>Batch</th><th>Qty left</th><th>Expires</th><th /></tr></thead>
+                <thead><tr><th>Medicine</th><th>Batch</th><th>Qty left</th><th>Expires</th><th>Status</th></tr></thead>
                 <tbody>
                   {batches.map((b) => (
                     <tr key={b.id}>
@@ -142,7 +166,36 @@ export default function InventoryPanel() {
                       <td>{b.batch_no || '—'}</td>
                       <td>{b.quantity} {b.medicine?.unit}</td>
                       <td>{formatDate(b.expiration_date)}</td>
-                      <td>{expiryBadge(b.expiration_date)}</td>
+                      <td className="text-nowrap">
+                        {daysUntil(b.expiration_date) < 0 && <span className="badge bg-danger me-1">Expired</span>}
+                        {daysUntil(b.expiration_date) <= EXPIRING_DAYS
+                          ? <button type="button" className={`btn btn-sm ${daysUntil(b.expiration_date) < 0 ? 'btn-danger' : 'btn-warning'}`} onClick={() => setConfirmList([b])}><i className="bi bi-box-arrow-up me-1" />Pull out</button>
+                          : expiryBadge(b.expiration_date)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="panel-card mt-4">
+          <h5 className="mb-1">Pull-out History</h5>
+          <p className="text-secondary small">Medicine pulled out of the health center because it expired or is about to.</p>
+          {disposals.length === 0 ? <div className="text-secondary">Nothing removed yet.</div> : (
+            <div className="table-responsive">
+              <table className="table mb-0">
+                <thead><tr><th>Removed on</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>Expires</th><th>Reason</th></tr></thead>
+                <tbody>
+                  {disposals.map((d) => (
+                    <tr key={d.id}>
+                      <td>{formatDate(d.disposed_at.slice(0, 10))}</td>
+                      <td>{d.medicine?.name}</td>
+                      <td>{d.batch_no || '—'}</td>
+                      <td>{d.quantity} {d.medicine?.unit}</td>
+                      <td>{formatDate(d.expiration_date)}</td>
+                      <td>{d.reason}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -151,6 +204,31 @@ export default function InventoryPanel() {
           )}
         </div>
       </div>
+      <Modal show={!!confirmList} title="Pull out from stock" icon="bi-box-arrow-up" onClose={() => !busyPull && setConfirmList(null)}
+        footer={<><button type="button" className="btn btn-outline-secondary" disabled={busyPull} onClick={() => setConfirmList(null)}>Cancel</button>
+          <button type="button" className="btn btn-danger px-4" disabled={busyPull} onClick={pullOut}><i className="bi bi-box-arrow-up me-1" />{busyPull ? 'Pulling out...' : 'Yes, pull out'}</button></>}>
+        {confirmList && (
+          <>
+            <div className="d-flex align-items-start gap-3 mb-3">
+              <span className="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning-subtle text-warning" style={{ width: 48, height: 48, fontSize: '1.5rem', flex: '0 0 auto' }}><i className="bi bi-exclamation-triangle-fill" /></span>
+              <div>
+                <div className="fw-bold">Take the whole batch out of the health center?</div>
+                <div className="small text-secondary">All remaining medicine in {confirmList.length > 1 ? 'these batches' : 'this batch'} will be removed from stock. This is recorded in the pull-out history and cannot be undone.</div>
+              </div>
+            </div>
+            <div className="border rounded overflow-hidden" style={{ maxHeight: 240, overflowY: 'auto' }}>
+              <table className="table table-sm align-middle mb-0">
+                <thead className="table-light"><tr><th>Medicine</th><th>Batch</th><th>Qty</th><th>Expires</th></tr></thead>
+                <tbody>
+                  {confirmList.map((b) => (
+                    <tr key={b.id}><td className="fw-semibold">{b.medicine?.name}</td><td>{b.batch_no || '—'}</td><td>{b.quantity} {b.medicine?.unit}</td><td>{formatDate(b.expiration_date)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
