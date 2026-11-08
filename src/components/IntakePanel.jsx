@@ -6,7 +6,6 @@ import PatientPicker from './PatientPicker.jsx';
 import { SYMPTOM_CATEGORIES, guessCategory, splitCategories, joinCategories } from '../lib/symptoms.js';
 
 const blank = { bp_systolic: '', bp_diastolic: '', weight_kg: '', height_cm: '', temperature_c: '', pulse_rate: '', chief_complaint: '', symptom_category: '' };
-// Purpose of the visit comes first. Only "sick" needs symptoms; check-ups need no chief complaint.
 const PURPOSES = [
   { key: 'sick', label: 'May sintomas / Sick', icon: 'bi-thermometer-half' },
   { key: 'checkup', label: 'Regular check-up / Follow-up', icon: 'bi-clipboard2-check', cat: 'Regular check-up', reason: 'Regular check-up' },
@@ -26,9 +25,9 @@ export default function IntakePanel() {
   const [f, setF] = useState(blank);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [catManual, setCatManual] = useState(false); // true once the BHW picks a category by hand
-  const [purpose, setPurpose] = useState('');          // '', 'sick', 'checkup', 'prenatal'
-  const [resetKey, setResetKey] = useState(0);     // bumps after each saved patient -> fresh form + fresh search box
+  const [catManual, setCatManual] = useState(false); 
+  const [purpose, setPurpose] = useState('');         
+  const [resetKey, setResetKey] = useState(0);     
   const sick = purpose === 'sick';
   const purposeInfo = PURPOSES.find((p) => p.key === purpose);
 
@@ -48,10 +47,8 @@ export default function IntakePanel() {
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
-  // Typing the symptoms auto-suggests a category (until the BHW chooses one manually).
   function setComplaint(e) {
     const text = e.target.value;
-    // keep suggesting while the chosen categories are still just the suggestions (or nothing is chosen yet)
     const follows = !catManual || !f.symptom_category || f.symptom_category === guessCategory(f.chief_complaint);
     setF({ ...f, chief_complaint: text, symptom_category: follows ? guessCategory(text) : f.symptom_category });
     if (follows) setCatManual(false);
@@ -120,7 +117,6 @@ export default function IntakePanel() {
     }).select('id').single();
     if (error) { setBusy(false); return setMsg({ type: 'danger', text: error.message }); }
 
-    // Hand over to the Midwife/Doctor queue.
     let qid = queueItem?.id;
     if (!qid) {
       const { data: open } = await supabase.from('queue').select('id').eq('patient_id', patient.id)

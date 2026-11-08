@@ -7,7 +7,6 @@ import { LabRequestBox, PatientLabResults } from './Laboratory.jsx';
 import Modal from './Modal.jsx';
 import { guessCategory } from '../lib/symptoms.js';
 
-// Searchable medicine dropdown: type part of the name, pick from the list.
 function MedicinePicker({ stock, value, onChange }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
@@ -58,7 +57,7 @@ export default function ConsultationPanel({ queueItem, onBack, onFinished, onLab
   const [records, setRecords] = useState(false);
   const [referral, setReferral] = useState(null);
   const labIds = (queueItem?.lab_requests ?? []).map((l) => l.id);
-  const hasLab = labIds.length > 0;   // lab already requested for this visit -> no second request
+  const hasLab = labIds.length > 0;   
 
   useEffect(() => {
     supabase.from('public_medicine_stock').select('*').order('name').then(({ data }) => setStock(data ?? []));
@@ -77,12 +76,11 @@ export default function ConsultationPanel({ queueItem, onBack, onFinished, onLab
 
   useEffect(() => { loadPatientData(); }, [loadPatientData]);
 
-  // Referred to a hospital -> the note says so automatically.
   const loadReferral = useCallback(async () => {
     if (!labIds.length) return;
     const { data } = await supabase.from('referrals').select('hospital').in('lab_request_id', labIds).order('created_at', { ascending: false }).limit(1);
     setReferral(data?.[0] ?? null);
-  }, [queueItem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queueItem?.id]); 
   useEffect(() => { loadReferral(); }, [loadReferral]);
   useEffect(() => {
     if (!referral?.hospital) return;

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
-// Live number of registrations waiting for approval (badge on the "Residents and Staff" tab, admin only).
 export function usePendingApprovals(enabled = true) {
   const [count, setCount] = useState(0);
   const load = useCallback(async () => {
@@ -12,7 +11,7 @@ export function usePendingApprovals(enabled = true) {
   useEffect(() => {
     if (!enabled) { setCount(0); return undefined; }
     load();
-    const timer = setInterval(load, 15000); // fallback in case realtime is not enabled for profiles
+    const timer = setInterval(load, 15000); 
     window.addEventListener('pending-changed', load);
     const channel = supabase
       .channel(`pending-approvals-${Math.random().toString(36).slice(2)}`)

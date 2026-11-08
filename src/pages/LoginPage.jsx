@@ -23,20 +23,18 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [setupOpen, setSetupOpen] = useState(false);
-  const [notice, setNotice] = useState(location.state?.notice ?? ''); // shown once; replaced by any new message
+  const [notice, setNotice] = useState(location.state?.notice ?? '');  
 
   useEffect(() => {
     supabase.rpc('setup_available').then(({ data }) => setSetupOpen(Boolean(data)));
   }, []);
 
-  // Signed in with the password but not confirmed by email today -> show the code step.
   const verifiedToday = profile?.email_verified_on === manilaToday();
   const waiting = profile && (profile.approval_status === 'pending' || profile.approval_status === 'declined');
-  const blocked = profile && !waiting && (profile.is_active === false); // the dashboard shows its own "deactivated" page
+  const blocked = profile && !waiting && (profile.is_active === false); 
   const needsCode = Boolean(session && profile && !blocked && !verifiedToday
     && profile.approval_status !== 'pending' && profile.approval_status !== 'declined');
 
-  // After the password (and the daily email code, if due) comes the puzzle captcha, then the dashboard.
   const needsCaptcha = Boolean(session && profile && !blocked && verifiedToday && !captchaDone);
 
   useEffect(() => {
@@ -78,7 +76,6 @@ export default function LoginPage() {
       setBusy(false);
       return;
     }
-    // the effects above send the code (or open the dashboard if already confirmed today)
     setBusy(false);
   }
 

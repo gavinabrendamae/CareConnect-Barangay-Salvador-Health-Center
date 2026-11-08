@@ -7,8 +7,6 @@ const keyOf = (ev) => `cc_ev_remind_${ev.id}_${dueDaysUntil(ev.event_date) === 0
 const seen = (k) => { try { return localStorage.getItem(k) === '1'; } catch { return false; } };
 const mark = (k) => { try { localStorage.setItem(k, '1'); } catch { /* ignore */ } };
 
-// Pops up when the admin opens the dashboard the day before (and on the day of) an event.
-// Each reminder is shown once; closing it marks it as read.
 export default function EventReminder({ onOpenCalendar }) {
   const [list, setList] = useState([]);
 

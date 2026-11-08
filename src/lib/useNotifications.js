@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from '../context/AuthContext.jsx';
 
-// The signed-in user's in-app notifications, live.
 export function useNotifications() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);

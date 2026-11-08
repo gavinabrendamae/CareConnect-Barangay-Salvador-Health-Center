@@ -2,11 +2,9 @@ import { useState } from 'react';
 import QueuePanel from './QueuePanel.jsx';
 import ConsultationPanel from './ConsultationPanel.jsx';
 
-// Unified clinical desk: queue -> clinical note (vitals, lab request/results, prescription) in one tab.
-// No jumping between Patient Queue / Clinical Note / Laboratory any more.
 export default function ConsultDesk() {
-  const [active, setActive] = useState(null);   // queue item being attended to
-  const [blank, setBlank] = useState(false);    // clinical note for a patient picked by name (no queue entry)
+  const [active, setActive] = useState(null);   
+  const [blank, setBlank] = useState(false);    
   const open = Boolean(active) || blank;
   const back = () => { setActive(null); setBlank(false); };
 

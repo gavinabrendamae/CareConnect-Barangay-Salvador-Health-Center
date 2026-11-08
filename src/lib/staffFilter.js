@@ -1,8 +1,5 @@
 import { supabase } from './supabase';
 
-// Health-center staff (BHW, midwife, doctor, admin) are not patients: hide their auto-created patient rows
-// from patient lists, counts and reports. A row is hidden when it is linked to a staff account (profile_id)
-// OR when its email belongs to a staff account (covers rows that were never linked).
 const STAFF_ROLES = ['bhw', 'midwife', 'doctor', 'admin'];
 let cache = { at: 0, ids: [], emails: [] };
 
@@ -17,7 +14,6 @@ async function staffInfo() {
   return cache;
 }
 
-// Usage: const so = await staffOr();  query = noStaff(query, so)
 export async function staffOr() {
   const { ids, emails } = await staffInfo();
   return { ids, emails };

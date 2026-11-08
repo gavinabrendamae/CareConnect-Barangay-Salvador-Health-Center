@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 
 const SIZE = 54;
-let cached = null; // processed logo (data URL) is made once and reused
+let cached = null; 
 
-// Removes the white square around the seal: only white pixels connected to the picture's edge become transparent,
-// so white parts inside the seal stay as they are.
 function removeWhiteBackground(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -29,7 +27,6 @@ function removeWhiteBackground(src) {
           if (y > 0) push(x, y - 1); if (y < h - 1) push(x, y + 1);
         }
         for (let i = 0; i < seen.length; i++) if (seen[i]) d[i * 4 + 3] = 0;
-        // soften the edge: light pixels touching the removed area become half-transparent (no white halo)
         for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
           const i = y * w + x;
           if (seen[i] || d[i * 4 + 3] === 0) continue;
@@ -47,7 +44,6 @@ function removeWhiteBackground(src) {
   });
 }
 
-// Uses the Barangay Salvador seal (public/Resources/Logo.png); falls back to the old heart icon if the image file is missing.
 export default function BrandMark() {
   const url = `${import.meta.env.BASE_URL}Resources/Logo.png`;
   const [src, setSrc] = useState(cached ?? url);

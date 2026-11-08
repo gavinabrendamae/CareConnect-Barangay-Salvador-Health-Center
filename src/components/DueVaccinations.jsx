@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { addDueDaysISO, formatDate, fullName, dueToday } from '../lib/format.js';
 
-// Doses on the immunization cards that are due today (or overdue) or tomorrow and not yet confirmed as vaccinated.
 export default function DueVaccinations({ onReschedule }) {
   const [rows, setRows] = useState(null);
 

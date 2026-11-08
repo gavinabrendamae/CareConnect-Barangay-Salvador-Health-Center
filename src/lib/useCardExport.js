@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-// Print / PDF download (A5 landscape, 8.27 x 5.83 in) for a card element. Same CSS as the immunization card.
 export function useCardExport(cardRef, fileName) {
   const [dl, setDl] = useState(false);
 

@@ -13,7 +13,7 @@ export default function AdminOverview() {
   const [error, setError] = useState('');
   const [span, setSpan] = useState(6);
   const [trend, setTrend] = useState(null);
-  const [pick, setPick] = useState(null); // symptom whose trend is open in the pop-up
+  const [pick, setPick] = useState(null); 
 
   useEffect(() => {
     (async () => {

@@ -18,7 +18,6 @@ const PW_RULES = [
   { id: 'special', label: 'At least one special character (!@#$...)', test: (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v) },
 ];
 
-// Philippine mobile number: fixed "flag +63" prefix + a box for the remaining 10 digits (e.g. 9123456789).
 const PH_LOCAL = /^9\d{9}$/;
 
 function PhFlag() {
@@ -35,8 +34,8 @@ function PhFlag() {
 function PhoneInput({ id, value, onChange }) {
   function handle(e) {
     let v = e.target.value.replace(/\D/g, '');
-    if (v.startsWith('63')) v = v.slice(2);   // pasted +63...
-    if (v.startsWith('0')) v = v.slice(1);    // typed 09...
+    if (v.startsWith('63')) v = v.slice(2);  
+    if (v.startsWith('0')) v = v.slice(1);   
     onChange(v.slice(0, 10));
   }
   return (
@@ -60,7 +59,7 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [showTerms, setShowTerms] = useState(false);
-  const [step, setStep] = useState('form'); // form | code
+  const [step, setStep] = useState('form'); 
 
   const set = (key) => (e) => setF({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const setVal = (key) => (val) => setF((prev) => ({ ...prev, [key]: val }));

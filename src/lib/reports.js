@@ -7,7 +7,6 @@ import { fetchSymptomTrends } from './trends.js';
 export const BARANGAY_NAME = 'Barangay Salvador Health Center';
 const FACILITY_ADDRESS = 'Barangay Salvador, Santiago City, Isabela';
 
-// Loads a logo from /public/Resources as a data URL (null when the file is missing).
 async function loadLogo(name) {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}Resources/${name}`);
@@ -248,7 +247,7 @@ export async function exportPDF(report, preparedBy) {
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
-    if (i === pages) doc.text(generated, 40, doc.internal.pageSize.getHeight() - 20); // last page only
+    if (i === pages) doc.text(generated, 40, doc.internal.pageSize.getHeight() - 20); 
     doc.text(`Page ${i} of ${pages}`, w - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
   }
   doc.save(`${report.filename}.pdf`);

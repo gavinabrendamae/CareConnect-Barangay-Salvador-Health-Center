@@ -18,7 +18,6 @@ function manilaDate(offsetDays = 0): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
 }
 
-// 09171234567 -> +639171234567
 function toE164(num: string | null): string | null {
   if (!num) return null;
   const n = num.replace(/[\s-]/g, '');
@@ -75,7 +74,6 @@ Deno.serve(async (req) => {
     if (!patient) continue;
     const dose = v.dose_label ? ` (${v.dose_label})` : '';
 
-    // ── Email ──
     if (!v.reminder_sent_at && patient.email) {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',

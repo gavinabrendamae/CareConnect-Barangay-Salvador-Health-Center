@@ -40,7 +40,6 @@ const FAQS = [
   { q: 'May libreng gamot ba sa Health Center?', a: 'May mga available na libreng gamot depende sa uri ng sakit at kasalukuyang supply ng Health Center. I-click ang Medicines sa itaas upang makita ang mga gamot na iniaalok ng Health Center.', img: `${import.meta.env.BASE_URL}Resources/faq8.jpg` },
 ];
 
-// Hero background slideshow — pictures are in public/Resources
 const HERO_IMAGES = ['Salv1.jpg', 'Home.png', 'Home1.png', 'Home2.png'].map((f) => `${import.meta.env.BASE_URL}Resources/${f}`);
 
 const PAGE_SIZE = 4;
@@ -57,7 +56,7 @@ export default function LandingPage() {
   const [bg, setBg] = useState(0);
 
   useEffect(() => {
-    HERO_IMAGES.forEach((src) => { const i = new Image(); i.src = src; }); // preload so the fade is smooth
+    HERO_IMAGES.forEach((src) => { const i = new Image(); i.src = src; }); 
     const t = setInterval(() => setBg((b) => (b + 1) % HERO_IMAGES.length), 5000);
     return () => clearInterval(t);
   }, []);

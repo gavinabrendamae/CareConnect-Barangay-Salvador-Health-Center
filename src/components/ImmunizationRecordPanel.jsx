@@ -4,14 +4,12 @@ import ImmunizationCard from './ImmunizationCard.jsx';
 import FamilyPlanningCard from './FamilyPlanningCard.jsx';
 import { calcAge } from '../lib/format.js';
 
-// Staff / admin: pick a patient, then edit the DOH-style immunization card.
-// Women aged 15–49 also get a Family Planning (Depo-Provera) card.
 export default function ImmunizationRecordPanel({ initialPatient = null, hint = '' }) {
   const [patient, setPatient] = useState(initialPatient);
   const [which, setWhich] = useState('main');
   useEffect(() => setWhich('main'), [patient?.id]);
   const age = patient ? calcAge(patient.birth_date) : null;
-  const female = patient?.gender === 'Female' && age >= 15 && age <= 49; // Family Planning applies to women 15–49 only
+  const female = patient?.gender === 'Female' && age >= 15 && age <= 49; 
   return (
     <div className="panel-card">
       <h5 className="mb-3">Immunization Record Card</h5>

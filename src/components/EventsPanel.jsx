@@ -12,7 +12,6 @@ export const fmtTime = (t) => {
   const [h, m] = t.split(':').map(Number);
   return `${((h + 11) % 12) + 1}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'}`;
 };
-// Typed 12-hour time: hour 1-12, minute 00-59, AM/PM dropdown. Emits "HH:MM" (24h) or ''.
 function TimeInput({ value, onChange }) {
   const split = (v) => {
     if (!v) return { h: '', m: '', ap: 'AM' };
@@ -25,10 +24,9 @@ function TimeInput({ value, onChange }) {
     if (!(h >= 1 && h <= 12) || !(m >= 0 && m <= 59) || n.m === '') return onChange('');
     onChange(`${pad((h % 12) + (n.ap === 'PM' ? 12 : 0))}:${pad(m)}`);
   };
-  useEffect(() => { // follow outside changes (edit / reset)
+  useEffect(() => { 
     const cur = (() => { const h = parseInt(t.h, 10), m = parseInt(t.m, 10); return h >= 1 && h <= 12 && m >= 0 && m <= 59 && t.m !== '' ? `${pad((h % 12) + (t.ap === 'PM' ? 12 : 0))}:${pad(m)}` : ''; })();
     if ((value || '') !== cur) setT(split(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
   const set = (patch) => { const n = { ...t, ...patch }; setT(n); emit(n); };
   const digits = (v, max) => v.replace(/\D/g, '').slice(0, max);
@@ -62,7 +60,7 @@ export default function EventsPanel() {
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState(null);
   const [announce, setAnnounce] = useState(null);
-  const [compose, setCompose] = useState(null); // { title, extra } — announcement modal
+  const [compose, setCompose] = useState(null); 
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('events').select('*').order('event_date').order('start_time');

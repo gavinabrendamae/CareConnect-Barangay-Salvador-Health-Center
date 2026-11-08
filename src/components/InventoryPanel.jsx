@@ -23,7 +23,7 @@ export default function InventoryPanel() {
   const [batch, setBatch] = useState({ medicine_id: '', batch_no: '', quantity: '', expiration_date: '' });
   const [msg, setMsg] = useState(null);
   const [disposals, setDisposals] = useState([]);
-  const [confirmList, setConfirmList] = useState(null); // batches waiting for pull-out confirmation
+  const [confirmList, setConfirmList] = useState(null); 
   const [busyPull, setBusyPull] = useState(false);
 
   async function pullOut() {

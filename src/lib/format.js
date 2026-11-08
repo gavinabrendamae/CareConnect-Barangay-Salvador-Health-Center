@@ -60,11 +60,9 @@ export function daysUntil(dateStr) {
   return Math.round((target - today) / 86400000);
 }
 
-// "Due date" clock: dates lapse at 5:00 PM (Philippine time). From 5 PM on, today already
-// counts as tomorrow for reminders, due vaccines and events.
 export const CUTOFF_HOUR = 17;
 function manilaParts() {
-  const m = new Date(Date.now() + 8 * 3600000); // shift to UTC+8, read with UTC getters
+  const m = new Date(Date.now() + 8 * 3600000); 
   return { y: m.getUTCFullYear(), mo: m.getUTCMonth(), d: m.getUTCDate(), h: m.getUTCHours() };
 }
 export function addDueDaysISO(n = 0) {
@@ -102,7 +100,6 @@ export function bmi(weightKg, heightCm) {
   return Math.round((Number(weightKg) / (m * m)) * 10) / 10;
 }
 
-// ── Patient type vs. age rules ──
 export const PATIENT_TYPES = ['Infant', 'Child', 'Adult', 'Senior Citizen', 'Pregnant', 'Person with Disability'];
 
 export function ageInMonths(birthDate) {
@@ -114,8 +111,6 @@ export function ageInMonths(birthDate) {
   return m;
 }
 
-// Returns an error message, or '' when the type fits the age.
-// Pregnant and Person with Disability have no age restriction.
 export function patientTypeError(birthDate, type) {
   const months = ageInMonths(birthDate);
   if (months === null || !type) return '';

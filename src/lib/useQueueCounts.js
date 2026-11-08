@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { startOfTodayISO } from './format.js';
 
-// Live counts of the patient queue. `onNew(n)` fires when n new patients
-// become "waiting" for the Midwife/Doctor (i.e. BHW finished their vitals).
 export function useQueueCounts(onNew) {
   const [counts, setCounts] = useState({ forVitals: 0, waiting: 0, inConsult: 0, awaitingLab: 0 });
   const seen = useRef(null);

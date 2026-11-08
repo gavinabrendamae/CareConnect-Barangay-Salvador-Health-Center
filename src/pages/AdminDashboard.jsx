@@ -26,7 +26,7 @@ import { usePendingApprovals } from '../lib/usePendingApprovals.js';
 export default function AdminDashboard() {
   const { role } = useAuth();
   const [tab, setTab] = useState('overview');
-  const [resched, setResched] = useState(null); // { patient, hint } — opened from "Reschedule"
+  const [resched, setResched] = useState(null); 
 
   const q = useQueueCounts();
   const medReq = useMedicineRequestCount();

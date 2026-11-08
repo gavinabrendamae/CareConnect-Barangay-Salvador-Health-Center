@@ -84,7 +84,6 @@ function LabItem({ lab, onChanged }) {
   );
 }
 
-// Resident's laboratory requests: upload the result of a lab done at another clinic.
 export default function ResidentLabPanel() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');

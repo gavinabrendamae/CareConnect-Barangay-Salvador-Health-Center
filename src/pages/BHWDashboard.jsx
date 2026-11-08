@@ -31,7 +31,7 @@ const TABS = [
 
 export default function BHWDashboard() {
   const [tab, setTab] = useState('dashboard');
-  const [resched, setResched] = useState(null); // { patient, hint } — opened from "Reschedule"
+  const [resched, setResched] = useState(null); 
   const medReq = useMedicineRequestCount();
   const labs = usePendingLabs();
   const tabs = TABS.map((t) => (t.key === 'medreq' ? { ...t, badge: medReq } : t.key === 'labq' ? { ...t, badge: labs } : t));

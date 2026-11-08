@@ -18,7 +18,7 @@ export default function DatePicker({ id, onChange, placeholder = 'dd/mm/yyyy', d
       minDate: minDate ?? undefined,
       allowInput: false,
       disableMobile: true,
-      closeOnSelect: false, // the user confirms with the OK button, so it is clear the date was chosen
+      closeOnSelect: false,  
       onReady: (_d, _s, inst) => {
         const wrap = document.createElement('div');
         wrap.style.cssText = 'padding:8px 10px 10px;border-top:1px solid #e6e6e6;display:flex;justify-content:flex-end;';

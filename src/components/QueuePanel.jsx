@@ -15,7 +15,7 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
   const [patient, setPatient] = useState(null);
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
-  const [orphans, setOrphans] = useState([]); // patient-uploaded results not yet reviewed and not tied to a waiting queue entry
+  const [orphans, setOrphans] = useState([]); 
   const q = useQueueCounts();
 
   const load = useCallback(async () => {
@@ -60,7 +60,6 @@ export default function QueuePanel({ onStartConsult, onOpenLab }) {
     if (err) setError(err.message); else load();
   }
 
-  // Uploaded results whose patient is not in the "awaiting lab" list: group by patient.
   const inQueue = new Set(labWait.flatMap((i) => (i.lab_requests ?? []).map((l) => l.id)));
   const orphanGroups = Object.values(orphans.filter((l) => !inQueue.has(l.id)).reduce((m, l) => {
     (m[l.patient_id] ??= { patient: l.patient, labs: [] }).labs.push(l);

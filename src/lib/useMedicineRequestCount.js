@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
-// Live number of medicine requests still waiting (shown as a badge for admin / BHW).
 export function useMedicineRequestCount() {
   const [count, setCount] = useState(0);
   const load = useCallback(async () => {

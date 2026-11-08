@@ -7,7 +7,7 @@ import { formatDate, fullName, todayISO } from '../lib/format.js';
 
 const pad = (x) => String(x).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-// 3 months after a date; if that lands on a weekend it moves to Monday.
+
 function returnDateFor(dateISO) {
   const d = new Date(`${dateISO}T00:00:00`);
   d.setMonth(d.getMonth() + 3);
@@ -59,7 +59,7 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
 
   async function setVaccineDate(n, value) {
     setMsg(null);
-    if (!value) {   // cleared: remove this injection and its automatic return date
+    if (!value) {   
       await supabase.from('immunization_records').delete().eq('patient_id', patientId).eq('vaccine', DEPO).eq('dose_no', n);
       const nxt = recs[n + 1];
       if (nxt && !nxt.confirmed_at) await supabase.from('immunization_records').delete().eq('patient_id', patientId).eq('vaccine', DEPO).eq('dose_no', n + 1);
@@ -84,7 +84,7 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
     load();
   }
 
-  async function setReturnDate(n, value) {   // n = the dose this date belongs to (the next injection)
+  async function setReturnDate(n, value) {   
     setMsg(null);
     if (!value) return;
     let v = value;

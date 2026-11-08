@@ -5,12 +5,9 @@ import { formatDate } from '../lib/format.js';
 import { dueToday as manilaToday } from '../lib/format.js';
 import DatePicker from './DatePicker.jsx';
 
-// ---- Landing page popup (public) ----
 const SEEN_KEY = 'cc_announce_seen';
 const isNew = (d) => Date.now() - new Date(d).getTime() < 3 * 86400000;
 
-// Public announcements popup for the landing page.
-// Opens once per browser session automatically; `open`/`onClose` let the hero button reopen it.
 export function AnnouncementModal({ open, onClose, onLoaded }) {
   const [rows, setRows] = useState(null);
   const [auto, setAuto] = useState(false);
@@ -80,7 +77,6 @@ export function AnnouncementModal({ open, onClose, onLoaded }) {
   );
 }
 
-// ---- Resident dashboard list ----
 export function AnnouncementList({ limit = 5 }) {
   const [rows, setRows] = useState(null);
 
@@ -102,7 +98,6 @@ export function AnnouncementList({ limit = 5 }) {
   ));
 }
 
-// ---- Admin / staff panel (default export) ----
 export default function AnnouncementsPanel() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);

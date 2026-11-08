@@ -8,14 +8,6 @@ import { LAB_TESTS } from '../lib/labTests.js';
 import ReferralModal from './ReferralModal.jsx';
 import OtherClinicModal from './OtherClinicModal.jsx';
 
-// ALL laboratory code in one file:
-//   LabCard            one lab request (upload result / view / review / refer)
-//   LabRequestBox      "Request laboratory" in the Clinical Note
-//   PatientLabResults  lab requests of one patient
-//   usePendingLabs     badge count for the Laboratory Queue tab
-//   LabQueuePanel      Laboratory Queue tab (default export, Admin + BHW)
-
-// ───────────── LabCard ─────────────
 function useSignedUrl(path) {
   const [url, setUrl] = useState(null);
   useEffect(() => {
@@ -27,7 +19,6 @@ function useSignedUrl(path) {
   return url;
 }
 
-// One laboratory request: pending → upload the result photo; resulted → view + refer to hospital.
 export function LabCard({ lab, showPatient = false, onChanged }) {
   const { user } = useAuth();
   const [file, setFile] = useState(null);
@@ -156,8 +147,6 @@ export function LabCard({ lab, showPatient = false, onChanged }) {
   );
 }
 
-// ───────────── LabRequestBox ─────────────
-// "Request laboratory" — sends the patient for lab and frees the doctor for the next patient.
 export function LabRequestBox({ patient, queueItem, defaultNote = '', onRequested, embedded = false }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -189,7 +178,7 @@ export function LabRequestBox({ patient, queueItem, defaultNote = '', onRequeste
     if (!(note || defaultNote).trim()) return setMsg({ type: 'danger', text: 'Enter the suspected impression (e.g. Pregnancy, Dengue). The result will be marked Positive or Negative against it.' });
     setBusy(true);
     let queueId = queueItem?.id ?? null;
-    if (!queueId) { // walk-in without a queue entry: create one so the patient isn't forgotten
+    if (!queueId) { 
       const { data, error } = await supabase.from('queue').insert({ patient_id: patient.id, queued_by: user.id, status: 'awaiting_lab', reason: 'Laboratory' }).select('id').single();
       if (error) { setBusy(false); setMsg({ type: 'danger', text: error.message }); return error.message; }
       queueId = data.id;
@@ -240,8 +229,6 @@ export function LabRequestBox({ patient, queueItem, defaultNote = '', onRequeste
   );
 }
 
-// ───────────── PatientLabResults ─────────────
-// Latest lab requests of one patient (shown beside the EMR form).
 export function PatientLabResults({ patient, refreshKey, queueId = null, onChanged, title = 'Laboratory' }) {
   const [rows, setRows] = useState([]);
   const load = useCallback(async () => {
@@ -263,8 +250,6 @@ export function PatientLabResults({ patient, refreshKey, queueId = null, onChang
   );
 }
 
-// ───────────── usePendingLabs ─────────────
-// Number of in-house laboratory requests waiting to be taken / uploaded (badge for the Laboratory Queue tab).
 export function usePendingLabs() {
   const [n, setN] = useState(0);
   const load = useCallback(async () => {
@@ -281,9 +266,6 @@ export function usePendingLabs() {
   return n;
 }
 
-// ───────────── LabQueuePanel ─────────────
-// Laboratory Queue (BHW / Midwife / Admin): tests requested by the midwife to be done at the health center.
-// Take the test, upload the result photo -> the patient shows up as "Result ready" under Waiting for Lab Results.
 export default function LabQueuePanel() {
   const [pending, setPending] = useState([]);
   const [done, setDone] = useState([]);

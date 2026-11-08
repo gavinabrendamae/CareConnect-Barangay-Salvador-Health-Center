@@ -5,7 +5,6 @@ import PatientForm from './PatientForm.jsx';
 import StaffPanel from './StaffPanel.jsx';
 import { PendingApprovals } from './RolesPanel.jsx';
 
-// One sidebar item, two separate sections (like the Immunization / Family Planning cards): Residents and Staff.
 export default function PeoplePanel({ pending = 0 }) {
   const { role } = useAuth();
   const isAdmin = role === 'admin';

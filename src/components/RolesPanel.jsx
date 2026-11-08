@@ -18,7 +18,6 @@ function useProfiles(ver) {
   return { rows, error, load };
 }
 
-// Registrations waiting for approval (residents who signed up on the website).
 export function PendingApprovals({ ver = 0, onChanged }) {
   const { rows, error, load } = useProfiles(ver);
   const [msg, setMsg] = useState(null);
@@ -26,7 +25,6 @@ export function PendingApprovals({ ver = 0, onChanged }) {
 
   async function setApproval(row, status) {
     setMsg(null);
-    // Approve keeps the account; decline removes it completely so the email can be used to register again.
     const { error: err } = status === 'approved'
       ? await supabase.from('profiles').update({ approval_status: 'approved', is_active: true }).eq('id', row.id)
       : await supabase.rpc('decline_registration', { p_profile_id: row.id });
@@ -64,7 +62,6 @@ export function PendingApprovals({ ver = 0, onChanged }) {
   );
 }
 
-// group="residents": resident accounts only.  group="staff": staff accounts only (BHW, Midwife, Doctor, Super Admin).
 export default function RolesPanel({ group = 'staff', ver = 0, onChanged }) {
   const { user } = useAuth();
   const { rows, error, load } = useProfiles(ver);
@@ -92,8 +89,6 @@ export default function RolesPanel({ group = 'staff', ver = 0, onChanged }) {
   const inGroup = rows.filter((r) => (isStaff ? r.role !== 'resident' : r.role === 'resident') && r.approval_status !== 'pending');
   const term = q.trim().toLowerCase();
   const shown = term ? inGroup.filter((r) => `${fullName(r)} ${r.email ?? ''}`.toLowerCase().includes(term)) : inGroup;
-
-  // staff view: find a registered resident and promote them to staff
   const pterm = pq.trim().toLowerCase();
   const candidates = isStaff && pterm.length >= 2
     ? rows.filter((r) => r.role === 'resident' && r.approval_status === 'approved' && `${fullName(r)} ${r.email ?? ''}`.toLowerCase().includes(pterm)).slice(0, 6)
