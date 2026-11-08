@@ -342,3 +342,81 @@ body.theme-light .ann-section{ color:#2b78b8; }
 .site-nav .navbar-toggler{ border-color:rgba(255,255,255,.5); }
 .site-nav .navbar-toggler-icon{ filter: invert(1); }
 .site-nav .btn-primary-custom{ border:1px solid rgba(255,255,255,.55); }
+
+/* ===== 3D press buttons (blue) — ilagay sa DULO ng styles.css ===== */
+.btn-primary-custom,
+.dash-nav-btn{
+  position: relative;
+  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+/* solid blue buttons: Login, Register, Save, Add to queue, ... */
+.btn-primary-custom{
+  box-shadow: 0 6px 0 #082f57;            /* darker blue edge = the "thickness" */
+}
+.btn-primary-custom:hover:not(:disabled){
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #082f57;
+}
+.btn-primary-custom:active:not(:disabled){
+  transform: translateY(6px);
+  box-shadow: 0 0 0 #082f57;
+}
+.btn-primary-custom:disabled{ box-shadow: 0 6px 0 #082f57; }
+/* small buttons in tables get a thinner edge */
+.btn-sm.btn-primary-custom{ box-shadow: 0 4px 0 #082f57; }
+.btn-sm.btn-primary-custom:hover:not(:disabled){ transform: translateY(2px); box-shadow: 0 2px 0 #082f57; }
+.btn-sm.btn-primary-custom:active:not(:disabled){ transform: translateY(4px); box-shadow: 0 0 0 #082f57; }
+/* Login button on the dark navbar */
+.site-nav .btn-primary-custom{ box-shadow: 0 6px 0 rgba(0,0,0,.55); }
+.site-nav .btn-primary-custom:hover:not(:disabled){ box-shadow: 0 2px 0 rgba(0,0,0,.55); }
+.site-nav .btn-primary-custom:active:not(:disabled){ box-shadow: 0 0 0 rgba(0,0,0,.55); }
+
+/* Log out button (header of the dashboards) */
+.dash-nav-btn{ box-shadow: 0 5px 0 rgba(0,0,0,.35); }
+.dash-nav-btn:hover{ transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.dash-nav-btn:active{ transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,.35); }
+
+/* space so the edge does not touch the next element */
+form .btn-primary-custom:not(.btn-sm){ margin-bottom: 6px; }
+
+@media (prefers-reduced-motion: reduce){
+  .btn-primary-custom, .dash-nav-btn{ transition: none; }
+}
+
+.service-card, .specialist-card{
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;               /* keeps the circle behind the text */
+}
+.service-card::before, .specialist-card::before{
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 0; height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2a7ab8 0%, var(--primary) 70%);
+  transform: translate(-50%, -50%);
+  transition: width .5s ease, height .5s ease;
+  z-index: -1;
+}
+.service-card:hover::before, .specialist-card:hover::before{
+  width: 700px; height: 700px;      /* grows from the center until it covers the whole card */
+}
+
+/* text / icons switch to white while the card is filled */
+.service-card h5, .service-card p, .service-card .service-icon, .service-card .service-icon i,
+.specialist-card h6, .specialist-card .role, .specialist-card .avatar-initials{
+  transition: color .3s ease, background-color .3s ease, box-shadow .3s ease;
+}
+.service-card:hover h5{ color:#fff; }
+.service-card:hover p{ color: rgba(255,255,255,.88)!important; }
+.service-card:hover .service-icon{ background:#fff; color: var(--primary); }
+.service-card:hover .btn-outline-primary-custom{ background:#fff; color: var(--primary); border-color:#fff; }
+
+.specialist-card:hover h6{ color:#fff; }
+.specialist-card:hover .role{ color: rgba(255,255,255,.88); }
+.specialist-card:hover .avatar-initials{ background:#fff!important; color: var(--primary)!important; box-shadow: 0 4px 12px rgba(0,0,0,.25)!important; }
+
+@media (prefers-reduced-motion: reduce){
+  .service-card::before, .specialist-card::before{ transition: none; }
+}
