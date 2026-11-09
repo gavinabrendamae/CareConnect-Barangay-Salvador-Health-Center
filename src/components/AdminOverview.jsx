@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { staffOr, noStaff } from '../lib/staffFilter.js';
 import { daysUntil, dueToday, monthStartISO, startOfTodayISO, todayISO } from '../lib/format.js';
-import { splitCategories } from '../lib/symptoms.js';
+import { illnessSymptoms } from '../lib/symptoms.js';
 import { topCounts } from './BarList.jsx';
 import { CHART_COLORS, HBarChart, SymptomTrendGrid } from './Charts.jsx';
 import { fetchSymptomTrends, firstOfMonthsAgo } from '../lib/trends.js';
@@ -45,7 +45,7 @@ export default function AdminOverview() {
         pendingVac: vac.count ?? 0,
         lowOut: (stock.data ?? []).filter((s) => s.status !== 'Available').length,
         expiring: (batches.data ?? []).filter((b) => { const x = daysUntil(b.expiration_date); return x <= 30; }).length,
-        symptoms: topCounts((consults.data ?? []).flatMap((c) => c.symptom_category ? splitCategories(c.symptom_category) : [c.complaint])),
+        symptoms: topCounts((consults.data ?? []).flatMap((c) => illnessSymptoms(c))),
         consumption: Object.entries(used).sort((a, b) => b[1] - a[1]).slice(0, 6),
       });
     })();

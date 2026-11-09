@@ -1,126 +1,137 @@
 // @ts-nocheck
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6";
+import QRCode from "npm:qrcode@1";
+import { jsPDF } from "npm:jspdf@2";
+import { Buffer } from "node:buffer";
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-);
-
-const defaultDaysAhead = Number(Deno.env.get('REMINDER_DAYS_AHEAD') ?? '3');
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+const FACILITY = "Barangay Salvador Health Center";
+const ADDRESS = "Barangay Salvador, Santiago City, Isabela";
 
-function manilaDate(offsetDays = 0): string {
-  const d = new Date(Date.now() + offsetDays * 86400000);
-  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+async function buildPdf(req: any, items: any[]) {
+  const ref = String(req.id).slice(0, 8).toUpperCase();
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const w = doc.internal.pageSize.getWidth();
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  doc.text("Republic of the Philippines", w / 2, 40, { align: "center" });
+  doc.text("Department of Health", w / 2, 54, { align: "center" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+  doc.text(FACILITY.toUpperCase(), w / 2, 72, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  doc.text(ADDRESS, w / 2, 87, { align: "center" });
+  doc.setLineWidth(2); doc.line(40, 104, w - 40, 104);
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(17);
+  doc.text("MEDICINE REQUEST SLIP", w / 2, 136, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  doc.text("Present this slip at the health center.", w / 2, 154, { align: "center" });
+
+  let y = 186;
+  const row = (k: string, v: string) => {
+    doc.setFont("helvetica", "bold"); doc.text(k, 40, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(v || "—"), 150, y);
+    y += 20;
+  };
+  row("Reference no.", ref);
+  row("Resident", req.requester_name);
+  row("Purok", req.requester_purok);
+  row("Requested on", new Date(req.created_at).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", year: "numeric", month: "long", day: "numeric" }));
+  if (req.note) row("Note", req.note);
+  row("Replied on", new Date(req.notified_at ?? Date.now()).toLocaleString("en-PH", { timeZone: "Asia/Manila" }));
+
+  y += 10;
+  doc.setFillColor(225, 225, 225); doc.rect(40, y, w - 80, 24, "F");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.text("Medicine", 48, y + 16); doc.text("Status", w - 200, y + 16);
+  y += 24;
+  doc.setLineWidth(0.5);
+  for (const it of items) {
+    doc.setFont("helvetica", "normal");
+    doc.text(String(it.name), 48, y + 17);
+    doc.setFont("helvetica", "bold");
+    doc.text(it.result === "available" ? "AVAILABLE" : "NOT AVAILABLE", w - 200, y + 17);
+    doc.line(40, y + 26, w - 40, y + 26);
+    y += 26;
+  }
+
+  const qr = await QRCode.toDataURL(`CareConnect medicine request ${ref}`, { margin: 1, width: 160 });
+  doc.addImage(qr, "PNG", w - 40 - 90, y + 24, 90, 90);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.text("Only medicines marked AVAILABLE can be claimed.", 40, y + 44);
+  doc.text("Bring a valid ID. Quantity is given by the midwife.", 40, y + 58);
+  const h = doc.internal.pageSize.getHeight();
+  doc.text(`Generated ${new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" })} via CareConnect`, 40, h - 24);
+
+  const b64 = Buffer.from(doc.output("arraybuffer")).toString("base64");
+  const safe = String(req.requester_name || "resident").replace(/[^A-Za-z0-9]+/g, "_");
+  return { ref, b64, filename: `medicine_request_${safe}_${ref}.pdf` };
 }
 
-function toE164(num: string | null): string | null {
-  if (!num) return null;
-  const n = num.replace(/[\s-]/g, '');
-  if (/^09\d{9}$/.test(n)) return `+63${n.slice(1)}`;
-  if (/^\+639\d{9}$/.test(n)) return n;
-  return null;
-}
-
-async function isAllowed(req: Request): Promise<boolean> {
-  const auth = req.headers.get('Authorization') ?? '';
-  const token = auth.replace(/^Bearer\s+/i, '');
-  if (!token) return false;
-  if (token === Deno.env.get('CRON_SECRET')) return true;
-
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return false;
-  const { data: prof } = await supabase
-    .from('profiles').select('role, is_active').eq('id', data.user.id).maybeSingle();
-  return Boolean(prof?.is_active && ['midwife', 'doctor', 'admin'].includes(prof.role));
-}
-
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
-  if (!(await isAllowed(req))) return new Response('Unauthorized', { status: 401, headers: cors });
-
-  let daysAhead = defaultDaysAhead;
+Deno.serve(async (r) => {
+  if (r.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
-    const body = await req.json();
-    if (Number.isFinite(Number(body?.days))) daysAhead = Math.min(Math.max(Number(body.days), 0), 30);
-  } catch { /* no body (cron) */ }
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const asUser = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: r.headers.get("Authorization") ?? "" } } });
+    const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: u } = await asUser.auth.getUser();
+    if (!u?.user) return json({ error: "Please log in again." }, 401);
 
-  const { data: due, error } = await supabase
-    .from('vaccinations')
-    .select('id, vaccine_name, dose_label, scheduled_date, reminder_sent_at, sms_sent_at, patient:patients(first_name, last_name, email, contact_number)')
-    .eq('status', 'scheduled')
-    .gte('scheduled_date', manilaDate(0))
-    .lte('scheduled_date', manilaDate(daysAhead))
-    .or('reminder_sent_at.is.null,sms_sent_at.is.null');
+    const { request_id, results, download } = await r.json();
+    const { data: req, error: e1 } = await admin.from("medicine_requests").select("*").eq("id", request_id).single();
+    if (e1 || !req) return json({ error: "Request not found." }, 404);
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
-  }
-
-  const smsUser = Deno.env.get('SMSGATE_USER');
-  const smsPass = Deno.env.get('SMSGATE_PASSWORD');
-  const smsUrl = Deno.env.get('SMSGATE_URL') ?? 'https://api.sms-gate.app/3rdparty/v1/messages';
-
-  let emailSent = 0;
-  let smsSent = 0;
-  const failed: string[] = [];
-
-  for (const v of due ?? []) {
-    const patient = v.patient as { first_name: string; last_name: string; email: string | null; contact_number: string | null } | null;
-    if (!patient) continue;
-    const dose = v.dose_label ? ` (${v.dose_label})` : '';
-
-    if (!v.reminder_sent_at && patient.email) {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: Deno.env.get('RESEND_FROM'),
-          to: [patient.email],
-          subject: `Vaccine reminder: ${v.vaccine_name} on ${v.scheduled_date}`,
-          html: `<p>Hello ${patient.first_name},</p>
-                 <p>This is a reminder from the Barangay Health Center that your
-                 <strong>${v.vaccine_name}${dose}</strong> vaccination is scheduled on
-                 <strong>${v.scheduled_date}</strong>.</p>
-                 <p>Please bring this reminder and visit the health center on or before that date.</p>
-                 <p>— CareConnect</p>`,
-        }),
-      });
-      if (res.ok) {
-        await supabase.from('vaccinations').update({ reminder_sent_at: new Date().toISOString() }).eq('id', v.id);
-        emailSent++;
-      } else {
-        failed.push(`email ${v.id}: ${res.status}`);
+    if (download) {
+      if (req.profile_id !== u.user.id) {
+        const { data: isStaff } = await asUser.rpc("is_staff");
+        if (!isStaff) return json({ error: "Not allowed." }, 403);
       }
+      if (!["notified", "unavailable"].includes(req.status)) return json({ error: "There is no reply yet for this request." }, 400);
+      const p = await buildPdf(req, req.items ?? []);
+      return json({ ok: true, reference: p.ref, filename: p.filename, pdf_base64: p.b64 });
     }
 
-    // ── SMS ──
-    const phone = toE164(patient.contact_number);
-    if (!v.sms_sent_at && phone && smsUser && smsPass) {
-      const res = await fetch(smsUrl, {
-        method: 'POST',
-        headers: { Authorization: `Basic ${btoa(`${smsUser}:${smsPass}`)}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          textMessage: {
-            text: `CareConnect: Hi ${patient.first_name}, paalala po — ${v.vaccine_name}${dose} ang bakuna ninyo sa ${v.scheduled_date}. Pumunta po sa health center.`,
-          },
-          phoneNumbers: [phone],
-        }),
-      });
-      if (res.ok) {
-        await supabase.from('vaccinations').update({ sms_sent_at: new Date().toISOString() }).eq('id', v.id);
-        smsSent++;
-      } else {
-        failed.push(`sms ${v.id}: ${res.status}`);
-      }
+    const { data: staff } = await asUser.rpc("is_staff");
+    if (!staff) return json({ error: "Only staff can answer requests." }, 403);
+    if (!Array.isArray(results) || results.length === 0 || results.some((x: any) => !["available", "unavailable"].includes(x.result))) {
+      return json({ error: "Choose Available or Not available for every medicine." }, 400);
     }
-  }
+    const available = results.filter((x: any) => x.result === "available").length;
+    const unavailable = results.length - available;
+    const notifiedAt = new Date().toISOString();
+    const status = available > 0 ? "notified" : "unavailable";
 
-  return new Response(JSON.stringify({ checked: due?.length ?? 0, emailSent, smsSent, failed }), {
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  });
+    const { data: prof } = await admin.from("profiles").select("email").eq("id", req.profile_id).single();
+    const to = prof?.email;
+    if (!to) return json({ error: "The resident has no email address." }, 400);
+
+    const slip = await buildPdf({ ...req, notified_at: notifiedAt }, results);
+
+    const user = Deno.env.get("GMAIL_USER"), pass = Deno.env.get("GMAIL_APP_PASSWORD");
+    if (!user || !pass) return json({ error: "Gmail is not set up (GMAIL_USER / GMAIL_APP_PASSWORD)." }, 500);
+    const tx = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user, pass } });
+    const lines = results.map((x: any) => `<li><b>${x.name}</b> — ${x.result === "available" ? '<span style="color:#198754">AVAILABLE</span>' : '<span style="color:#dc3545">NOT AVAILABLE</span>'}</li>`).join("");
+    await tx.sendMail({
+      from: `"${FACILITY}" <${user}>`, to,
+      subject: `Medicine request reply — ${FACILITY}`,
+      html: `<p>Hello ${req.requester_name},</p>
+<p>Here is the reply to your medicine request:</p><ul>${lines}</ul>
+<p>${available > 0 ? "Your request slip is attached to this email. <b>Download it and show it at the health center</b> to claim the available medicine." : "The medicine you requested is not available right now. A copy of the reply is attached."}</p>
+<p>Reference no.: <b>${slip.ref}</b></p><p>— ${FACILITY}</p>`,
+      attachments: [{ filename: slip.filename, content: Buffer.from(slip.b64, "base64"), contentType: "application/pdf" }],
+    });
+
+    const { error: e2 } = await admin.from("medicine_requests")
+      .update({ items: results, status, notified_at: notifiedAt }).eq("id", request_id);
+    if (e2) return json({ error: e2.message }, 500);
+
+    return json({ ok: true, available, unavailable, sent_to: to, reference: slip.ref, filename: slip.filename, pdf_base64: slip.b64 });
+  } catch (e) {
+    return json({ error: String(e?.message ?? e) }, 500);
+  }
 });

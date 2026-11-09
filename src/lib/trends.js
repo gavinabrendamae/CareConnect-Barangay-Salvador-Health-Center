@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { splitCategories } from './symptoms.js';
+import { splitCategories, NON_ILLNESS } from './symptoms.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 export const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
@@ -43,7 +43,7 @@ export async function fetchSymptomTrends(fromISO, toISO, top = 6) {
     const i = idx[monthKey(new Date(r.consulted_at))];
     if (i === undefined) return;
     const names = r.symptom_category ? splitCategories(r.symptom_category) : [(r.complaint ?? '').trim().toLowerCase()];
-    names.filter(Boolean).forEach((n) => {
+    names.filter((n) => n && !NON_ILLNESS.includes(n)).forEach((n) => {
       (map[n] ??= Array(months.length).fill(0))[i] += 1;
     });
   });

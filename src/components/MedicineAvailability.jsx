@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fullName } from '../lib/format.js';
 import Modal from './Modal.jsx';
+import { downloadMedicineSlip } from '../lib/medicineSlip.js';
 
 /** Resident view: only the medicines that are OUT of stock, with a "Request" button. */
 export default function MedicineAvailability() {
@@ -65,6 +66,11 @@ export default function MedicineAvailability() {
   const addName = () => form.names.length < 5 && setForm({ ...form, names: [...form.names, ''] });
   const removeName = (i) => setForm({ ...form, names: form.names.filter((_, k) => k !== i) });
 
+  async function slip(id) {
+    setMsg(null);
+    try { await downloadMedicineSlip(id); } catch (e) { setMsg({ type: 'danger', text: e.message }); }
+  }
+
   async function cancel(id) {
     await supabase.from('medicine_requests').update({ status: 'cancelled' }).eq('id', id);
     load();
@@ -120,8 +126,12 @@ export default function MedicineAvailability() {
                   )}
                 </span>
                 {m.status === 'waiting' && <span><span className="badge bg-warning text-dark me-2">Waiting</span><button className="btn btn-link btn-sm p-0" onClick={() => cancel(m.id)}>Cancel</button></span>}
-                {m.status === 'notified' && <span className="badge bg-success">Replied — email sent</span>}
-                {m.status === 'unavailable' && <span className="badge bg-danger">Replied — email sent</span>}
+                {(m.status === 'notified' || m.status === 'unavailable') && (
+                  <span className="text-nowrap">
+                    <span className={`badge ${m.status === 'notified' ? 'bg-success' : 'bg-danger'} me-2`}>Replied — email sent</span>
+                    <button type="button" className="btn btn-sm btn-outline-primary-custom" onClick={() => slip(m.id)}><i className="bi bi-download me-1" />Download slip</button>
+                  </span>
+                )}
                 {m.status === 'cancelled' && <span className="badge bg-secondary">Cancelled</span>}
               </li>
             ))}

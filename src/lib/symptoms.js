@@ -36,4 +36,9 @@ export function guessCategories(text) {
 export const joinCategories = (arr) => arr.join(', ');
 export const splitCategories = (s) => (s ? s.split(',').map((x) => x.trim()).filter(Boolean) : []);
 
+export const NON_ILLNESS = ['Regular check-up', 'Buntis / Prenatal'];
+export const isCheckupOnly = (c) => { const cats = splitCategories(c?.symptom_category); return cats.length > 0 && cats.every((x) => NON_ILLNESS.includes(x)); };
+
+export const illnessSymptoms = (c) => (c?.symptom_category ? splitCategories(c.symptom_category).filter((x) => !NON_ILLNESS.includes(x)) : [c?.complaint]).filter(Boolean);
+
 export const guessCategory = (text) => joinCategories(guessCategories(text));

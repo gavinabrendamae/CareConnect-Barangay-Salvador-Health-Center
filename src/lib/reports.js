@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { staffOr, noStaff } from './staffFilter.js';
 import { calcAge, formatDate, fullName } from './format.js';
-import { splitCategories } from './symptoms.js';
+import { splitCategories, illnessSymptoms, isCheckupOnly } from './symptoms.js';
 import { fetchSymptomTrends } from './trends.js';
 
 export const BARANGAY_NAME = 'Barangay Salvador Health Center';
@@ -58,12 +58,20 @@ export async function buildReport(type, from, to) {
     const rows = await fetchAll(() => supabase.from('consultations')
       .select('consulted_at, complaint, symptom_category, diagnosis, patient:patients(first_name, middle_name, last_name, suffix, birth_date, gender, purok)')
       .gte('consulted_at', dayStart(from)).lte('consulted_at', dayEnd(to)).order('consulted_at'));
+    const sick = rows.filter((r) => !isCheckupOnly(r));
+    const checks = rows.filter(isCheckupOnly);
+    const kindOf = (r) => (splitCategories(r.symptom_category).includes('Buntis / Prenatal') ? 'Prenatal' : 'Regular check-up');
     return {
       title: 'Morbidity & Consultation Report', subtitle: period, filename: `morbidity_${from}_${to}`,
       sections: [
         { heading: 'Summary', columns: ['Item', 'Count'], rows: [['Total consultations', rows.length], ['Unique patients', new Set(rows.map((r) => fullName(r.patient))).size]] },
-        { heading: 'Diagnosis given', columns: ['Diagnosis', 'Cases'], rows: tally(rows.map((r) => r.diagnosis?.toLowerCase())) },
-        { heading: 'Symptoms', columns: ['Complaint', 'Cases'], rows: tally(rows.flatMap((r) => (r.symptom_category ? splitCategories(r.symptom_category) : [r.complaint]).map((x) => x?.toLowerCase()))).slice(0, 15) },
+        { heading: 'Diagnosis given', columns: ['Diagnosis', 'Cases'], rows: tally(sick.map((r) => r.diagnosis?.toLowerCase())) },
+        { heading: 'Symptoms', columns: ['Complaint', 'Cases'], rows: tally(sick.flatMap((r) => illnessSymptoms(r).map((x) => x?.toLowerCase()))).slice(0, 15) },
+        { heading: 'Regular check-ups & prenatal visits (not counted as symptoms)', columns: ['Type', 'Visits'], rows: tally(checks.map(kindOf)) },
+        {
+          heading: 'Check-up & prenatal log', columns: ['Date', 'Patient', 'Age', 'Purok', 'Type', 'Notes'],
+          rows: checks.map((r) => [formatDate(r.consulted_at), fullName(r.patient), calcAge(r.patient?.birth_date), r.patient?.purok ?? '', kindOf(r), r.diagnosis ?? r.complaint ?? '']),
+        },
         { heading: 'Cases per purok', columns: ['Purok', 'Cases'], rows: tally(rows.map((r) => r.patient?.purok)) },
         {
           heading: 'Consultation log', columns: ['Date', 'Patient', 'Age', 'Sex', 'Purok', 'Complaint', 'Diagnosis'],
