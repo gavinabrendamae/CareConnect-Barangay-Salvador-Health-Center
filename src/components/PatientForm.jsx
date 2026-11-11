@@ -7,7 +7,7 @@ import PatientPicker from './PatientPicker.jsx';
 import PasswordInput from './PasswordInput.jsx';
 import { PW_RULES } from '../lib/passwordRules.js';
 
-const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5'];
+const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 const blank = {
   first_name: '', middle_name: '', last_name: '', suffix: '', birth_date: '', gender: '',
@@ -67,7 +67,7 @@ export default function PatientForm({ patient, onSaved, onCancel }) {
     if (!f.birth_date) return setMsg({ type: 'danger', text: 'Please select the birth date.' });
     const typeErr = patientTypeError(f.birth_date, f.patient_type);
     if (typeErr) return setMsg({ type: 'danger', text: typeErr });
-    if (isYoung(f.birth_date) && !head) return setMsg({ type: 'danger', text: 'Please link this child to the mother. She must already have an account.' });
+    if (isYoung(f.birth_date) && !head) return setMsg({ type: 'danger', text: 'Please link this child to the mother or guardian. She/he must already have an account.' });
     if (!isYoung(f.birth_date) && f.contact_number && !PH_PHONE.test(f.contact_number.trim())) {
       return setMsg({ type: 'danger', text: 'Enter a valid mobile number (09XXXXXXXXX).' });
     }

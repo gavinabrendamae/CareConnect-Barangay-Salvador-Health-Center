@@ -120,18 +120,18 @@ export default function PatientList() {
       </Modal>
 
       <Modal show={Boolean(household)} title="Family Members" icon="bi-house-heart" onClose={() => setHousehold(null)}>
-        {members.length <= 1 ? (
+        {household && (members.length <= 1 ? (
           <div className="text-secondary">No linked family members yet. Open a family member's profile and choose their Parent / Guardian to link them.</div>
         ) : (
           <ul className="list-unstyled mb-0">
             {members.map((m) => (
               <li key={m.id} className="border-bottom py-2">
-                <strong>{fullName(m)}</strong> {m.id === (household.household_head_id ?? household.id) && <span className="badge bg-primary">Parent / Guardian</span>}
+                <strong>{fullName(m)}</strong> {m.id === (household?.household_head_id ?? household?.id) && <span className="badge bg-primary">Parent / Guardian</span>}
                 <div className="small text-secondary">{m.medical_id} · {calcAge(m.birth_date)} yrs · {m.gender}</div>
               </li>
             ))}
           </ul>
-        )}
+        ))}
       </Modal>
     </div>
 

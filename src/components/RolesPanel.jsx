@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fullName, ROLE_LABEL } from '../lib/format.js';
+import Modal from './Modal.jsx';
 
 const COLS = 'id, first_name, middle_name, last_name, suffix, email, role, purok, is_active, approval_status';
 const STAFF_CHOICES = ['bhw', 'midwife', 'doctor'];
@@ -22,14 +23,55 @@ function useProfiles(ver) {
 export function PendingApprovals({ ver = 0, onChanged }) {
   const { rows, error, load } = useProfiles(ver);
   const [msg, setMsg] = useState(null);
+  const [declining, setDeclining] = useState(null);
+  const [reason, setReason] = useState('');
+  const [declErr, setDeclErr] = useState('');
+  const [approving, setApproving] = useState(null);
+  const REASONS = ['Incorrect or incomplete information', 'Not a resident of Barangay Salvador', 'Duplicate account', 'Other reasons'];
+  const OTHER = 'Other reasons';
+  const [choice, setChoice] = useState('');
+  const [busy, setBusy] = useState(false);
   const pending = rows.filter((r) => r.approval_status === 'pending');
+
+  async function approveNow() {
+    const row = approving;
+    setMsg(null); setBusy(true);
+    const { error: err } = await supabase.from('profiles').update({ approval_status: 'approved', is_active: true }).eq('id', row.id);
+    if (err) { setBusy(false); setApproving(null); return setMsg({ type: 'danger', text: err.message }); }
+    const { error: mailErr } = await supabase.functions.invoke('registration-approve', { body: { profile_id: row.id } });
+    setBusy(false); setApproving(null);
+    notify(); onChanged?.(); load();
+    let why = '';
+    if (mailErr) {
+      why = mailErr.message;
+      try { const j = await mailErr.context.json(); if (j?.error) why = j.error; } catch { /* keep message */ }
+    }
+    setMsg(mailErr
+      ? { type: 'warning', text: `${fullName(row)} was approved, but the email could not be sent: ${why}` }
+      : { type: 'success', text: `${fullName(row)} was approved.` });
+  }
+
+  async function sendDecline() {
+    setDeclErr(''); setMsg(null); setBusy(true);
+    const { error: mailErr } = await supabase.functions.invoke('registration-decline', { body: { profile_id: declining.id, reason: reason.trim() } });
+    if (mailErr) {
+      let text = mailErr.message;
+      try { const j = await mailErr.context.json(); if (j?.error) text = j.error; } catch { /* keep message */ }
+      setBusy(false);
+      return setDeclErr(`The email could not be sent, so nothing was declined: ${text}`);
+    }
+    await setApproval(declining, 'declined');
+    setReason('');
+  }
 
   async function setApproval(row, status) {
     setMsg(null);
+    setBusy(true);
     // Approve keeps the account; decline removes it completely so the email can be used to register again.
     const { error: err } = status === 'approved'
       ? await supabase.from('profiles').update({ approval_status: 'approved', is_active: true }).eq('id', row.id)
       : await supabase.rpc('decline_registration', { p_profile_id: row.id });
+    setBusy(false); setDeclining(null);
     if (err) return setMsg({ type: 'danger', text: err.message });
     setMsg({ type: 'success', text: `${fullName(row)} was ${status === 'approved' ? 'approved.' : 'declined.'}` });
     load(); notify(); onChanged?.();
@@ -50,8 +92,8 @@ export function PendingApprovals({ ver = 0, onChanged }) {
                   <tr key={r.id}>
                     <td><strong>{fullName(r)}</strong><div className="small text-secondary">{r.email} · {r.purok || 'no purok'}</div></td>
                     <td className="text-end text-nowrap">
-                      <button className="btn btn-sm btn-success me-2" onClick={() => setApproval(r, 'approved')}>Approve</button>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => setApproval(r, 'declined')}>Decline</button>
+                      <button className="btn btn-sm btn-success me-2" onClick={() => { setMsg(null); setApproving(r); }}>Approve</button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => { setReason(''); setChoice(''); setDeclErr(''); setMsg(null); setDeclining(r); }}>Decline</button>
                     </td>
                   </tr>
                 ))}
@@ -60,6 +102,46 @@ export function PendingApprovals({ ver = 0, onChanged }) {
           </div>
         </div>
       )}
+      <Modal show={!!approving} title="Accept registration" icon="bi-person-check" onClose={() => !busy && setApproving(null)}
+        footer={<><button type="button" className="btn btn-outline-secondary" disabled={busy} onClick={() => setApproving(null)}>Cancel</button>
+          <button type="button" className="btn btn-success px-4" disabled={busy} onClick={approveNow}><i className="bi bi-envelope-check me-1" />{busy ? 'Approving...' : 'Yes, accept and send email'}</button></>}>
+        {approving && (
+          <div className="text-center py-2">
+            <span className="d-inline-flex align-items-center justify-content-center rounded-circle bg-success-subtle text-success mb-3" style={{ width: 72, height: 72, fontSize: '2rem' }}><i className="bi bi-person-check-fill" /></span>
+            <h5 className="mb-1">You are about to accept this account</h5>
+            <div className="border rounded p-3 my-3 text-start bg-light">
+              <div className="fw-bold">{fullName(approving)}</div>
+              <div className="small text-secondary">{approving.email}</div>
+              <div className="small text-secondary">{approving.purok || 'No purok'}</div>
+            </div>
+            <div className="small text-secondary">They will be able to log in, and a confirmation email will be sent to {approving.email}.</div>
+          </div>
+        )}
+      </Modal>
+      <Modal show={!!declining} title="Decline registration" icon="bi-person-x" onClose={() => !busy && setDeclining(null)}
+        footer={<><button type="button" className="btn btn-outline-secondary" disabled={busy} onClick={() => setDeclining(null)}>Cancel</button>
+          <button type="button" className="btn btn-danger px-4" disabled={busy || reason.trim().length < 5} onClick={sendDecline}><i className="bi bi-envelope-x me-1" />{busy ? 'Sending...' : 'Decline and send email'}</button></>}>
+        {declining && (
+          <div className="text-center py-2">
+            <span className="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-3" style={{ width: 72, height: 72, fontSize: '2rem' }}><i className="bi bi-person-x-fill" /></span>
+            <h5 className="mb-1">Are you sure you want to decline this registration?</h5>
+            <div className="border rounded p-3 my-3 text-start bg-light">
+              <div className="fw-bold">{fullName(declining)}</div>
+              <div className="small text-secondary">{declining.email}</div>
+              <div className="small text-secondary">{declining.purok || 'No purok'}</div>
+            </div>
+            <div className="text-start">
+              {declErr && <div className="alert alert-danger py-2 small">{declErr}</div>}
+              <label className="form-label fw-semibold">Reason <span className="text-danger">*</span></label>
+              <div className="d-flex flex-wrap gap-2 mb-2">
+                {REASONS.map((x) => <button key={x} type="button" className={`btn btn-sm ${choice === x ? 'btn-primary-custom' : 'btn-outline-secondary'}`} onClick={() => { setChoice(x); setReason(x === OTHER ? '' : x); }}>{x}</button>)}
+              </div>
+              <textarea rows="3" className="form-control" placeholder={choice === OTHER ? 'Type your own reason here' : 'Tell the resident what to correct'} value={reason} onChange={(e) => setReason(e.target.value)} />
+              <div className="form-text">This reason is emailed to {declining.email}. They can register again with the same email.</div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

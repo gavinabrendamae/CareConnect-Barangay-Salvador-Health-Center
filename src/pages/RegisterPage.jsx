@@ -171,10 +171,10 @@ export default function RegisterPage() {
                   </select>
                 </div>
               </div>
-
+ 
               <div className="mb-3">
                 <label className="form-label required" htmlFor="regEmail">Email</label>
-                <input type="email" className="form-control" id="regEmail" placeholder="Enter your email (used for login and vaccine alerts)" value={f.email} onChange={set('email')} required autoComplete="email" />
+                <input type="email" className="form-control" id="regEmail" placeholder="Enter your email" value={f.email} onChange={set('email')} required autoComplete="email" />
               </div>
 
               <div className="mb-3">
