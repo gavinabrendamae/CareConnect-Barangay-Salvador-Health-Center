@@ -69,7 +69,7 @@ export default function DispenseLogPanel() {
       await supabase.from('medicine_requests').update({ given }).eq('id', form.request_id);
     }
     setBusy(false);
-    setMsg({ type: 'success', text: `${qty} ${med.unit} of ${med.name} given to ${fullName(patient)}. Stock was deducted (earliest expiry first).` });
+    setMsg({ type: 'success', text: `${qty} ${med.unit} of ${med.name} given to ${fullName(patient)}.` });
     setPatient(null);
     setForm({ medicine_id: '', quantity: '', instructions: '', request_id: '' });
     load();

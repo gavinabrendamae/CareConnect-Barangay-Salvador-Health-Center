@@ -49,7 +49,7 @@ export default function ImmunizationCard({ patientId, editable = false, forceKin
 
   const configured = card.rows.map((r) => r.name);
   const customNames = [...new Set([
-    ...Object.values(recs).map((x) => x.vaccine).filter((v) => !configured.includes(v) && v !== DEPO),
+    ...Object.values(recs).map((x) => x.vaccine).filter((v) => !configured.includes(v) && v !== DEPO), // Depo lives on the Family Planning card only
     ...extras,
   ])];
   const maxDose = (name) => Math.max(0, ...Object.values(recs).filter((x) => x.vaccine === name).map((x) => x.dose_no));
@@ -68,7 +68,7 @@ export default function ImmunizationCard({ patientId, editable = false, forceKin
     if (error) return setMsg({ type: 'danger', text: error.message });
     if (value) {
       if (value > addDaysISO(1)) {
-        setMsg({ type: 'success', text: `${vaccine} dose ${n} scheduled for ${formatDate(value)}. The parent/child get a Gmail + in-app reminder the day before and on that day.` });
+        setMsg({ type: 'success', text: `${vaccine} dose ${n} scheduled for ${formatDate(value)}.` });
       } else {
         await sendNotice(vaccine, n, undefined, `${vaccine} dose ${n} scheduled for ${formatDate(value)}.`);
       }
@@ -83,7 +83,7 @@ export default function ImmunizationCard({ patientId, editable = false, forceKin
     if (!mailErr && data?.failed?.length) reason = data.failed.join('; ');
     setMsg(reason
       ? { type: 'warning', text: `${okText} But the Gmail notice failed: ${reason}` }
-      : { type: 'success', text: `${okText} ${data?.emailSent ? `Gmail notice sent to ${data.emailSent} address(es).` : 'In-app notice sent (no email on file).'}` });
+      : { type: 'success', text: okText });
   }
 
   async function confirm(vaccine, n) {
@@ -122,6 +122,7 @@ export default function ImmunizationCard({ patientId, editable = false, forceKin
     if (error) setMsg({ type: 'danger', text: error.message }); else load();
   }
 
+  // Prints only this card. Doses that are still "scheduled" are left blank; only confirmed vaccinations are printed.
   function printCard() {
     const el = cardRef.current;
     el.classList.add('imm-print-target');
@@ -130,7 +131,8 @@ export default function ImmunizationCard({ patientId, editable = false, forceKin
     window.addEventListener('afterprint', done);
     window.print();
   }
-  
+
+  // Downloads the card as a PDF (A5 landscape, 8.27 x 5.83 in). Scheduled doses are left blank, like the print.
   async function downloadPdf() {
     setDl(true);
     const el = cardRef.current;

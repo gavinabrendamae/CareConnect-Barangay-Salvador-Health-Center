@@ -46,7 +46,7 @@ export default function PatientList() {
     if (turnOff && !window.confirm(`Deactivate ${fullName(p)}'s account?\n\nThey will no longer be able to log in to the resident portal. Their patient record and history are kept, and you can activate the account again anytime.`)) return;
     const { error: err } = await supabase.from('profiles').update({ is_active: !turnOff }).eq('id', p.profile_id);
     if (err) return setMsg({ type: 'danger', text: err.message });
-    setMsg({ type: 'success', text: `${fullName(p)}'s account was ${turnOff ? 'deactivated and moved to the list below' : 'activated again'}.` });
+    setMsg({ type: 'success', text: `${fullName(p)}'s account was ${turnOff ? 'deactivated' : 'activated'}.` });
     load();
   }
 

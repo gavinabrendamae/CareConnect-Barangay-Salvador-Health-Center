@@ -422,3 +422,46 @@ form .btn-primary-custom:not(.btn-sm){ margin-bottom: 6px; }
 .cq-lab .border-bottom{ border-color:#f3e3bd !important; }
 .cq-walkin{ background:linear-gradient(180deg,#e9f8f4 0,#fff 140px); border-top:4px solid #2a9d8f; box-shadow:0 4px 14px rgba(42,157,143,.1); }
 .cq-lab .form-control, .cq-lab .form-select{ background:#fff; }
+
+body, body.tinted, body.theme-light{
+  background:
+    radial-gradient(900px 420px at 100% 0%, rgba(47,134,214,.16), transparent 70%),
+    radial-gradient(800px 500px at 0% 100%, rgba(12,76,138,.10), transparent 70%),
+    linear-gradient(180deg, #e8f1fb 0%, #dbe9f8 100%);
+  background-attachment: fixed;
+}
+.dash-main .panel-card{ border:1px solid #cfe0f3; box-shadow:0 4px 14px rgba(12,76,138,.08); }
+.dash-sidebar{ border-color:#cfe0f3; box-shadow:0 4px 14px rgba(12,76,138,.08); }
+
+.page-section{ background: transparent; }
+.page-section.bg-light{ background: rgba(255,255,255,.55) !important; }
+.specialist-section{ background: rgba(47,134,214,.12); }
+
+/* ===== Poppins font everywhere (sizes unchanged) + pill-shaped FAQ ===== */
+:root{ --bs-body-font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif; }
+body, button, input, select, textarea, .btn, .form-control, .form-select, h1, h2, h3, h4, h5, h6{
+  font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.accordion-item{
+  background: transparent !important; border: 0 !important; box-shadow: none !important;
+  transform: none !important; overflow: visible; margin-bottom: .75rem;
+}
+.accordion-item:hover{ transform: none !important; box-shadow: none !important; }
+.accordion-button{
+  background: rgba(255,255,255,.7); color: var(--primary); font-weight: 500;
+  border: 1.5px solid var(--primary) !important; border-radius: 999px !important;
+  padding: .85rem 1.4rem; box-shadow: none !important;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+.accordion-button:hover, .accordion-button:not(.collapsed){ background: var(--primary); color: #fff; }
+.accordion-button::after{ transition: transform .2s ease; }
+.accordion-button:hover::after, .accordion-button:not(.collapsed)::after{ filter: invert(1) grayscale(100%) brightness(200%); }
+.accordion-button:focus{ box-shadow: 0 0 0 .2rem rgba(12,76,138,.2) !important; }
+.accordion-collapse{ border: 0; }
+.accordion-body{ background: transparent; padding: .6rem 1.4rem 0; color: var(--text-dark); }
+
+.service-card, .specialist-card{
+  border: 1.5px solid var(--primary) !important;
+  box-shadow: 0 4px 12px rgba(12,76,138,.10);
+}

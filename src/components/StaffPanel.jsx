@@ -36,7 +36,7 @@ export default function StaffPanel() {
     setBusy(false);
     if (roleErr) return setMsg({ type: 'warning', text: `Account created, but the role could not be set: ${roleErr.message}. Set it in the table below.` });
 
-    setMsg({ type: 'success', text: `${ROLE_LABEL[f.role]} account created for ${f.email.trim()}. Give them the temporary password; if email confirmation is enabled in Supabase they must confirm their email first.` });
+    setMsg({ type: 'success', text: `${ROLE_LABEL[f.role]} account created for ${f.email.trim()}.` });
     setF(blank);
     setRefresh((n) => n + 1);
   }

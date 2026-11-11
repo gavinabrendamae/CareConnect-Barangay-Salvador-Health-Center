@@ -23,7 +23,7 @@ export default function InventoryPanel() {
   const [batch, setBatch] = useState({ medicine_id: '', batch_no: '', quantity: '', expiration_date: '' });
   const [msg, setMsg] = useState(null);
   const [disposals, setDisposals] = useState([]);
-  const [confirmList, setConfirmList] = useState(null); 
+  const [confirmList, setConfirmList] = useState(null); // batches waiting for pull-out confirmation
   const [busyPull, setBusyPull] = useState(false);
 
   async function pullOut() {
@@ -34,7 +34,7 @@ export default function InventoryPanel() {
       if (error) { setMsg({ type: 'danger', text: error.message }); setBusyPull(false); setConfirmList(null); load(); return; }
     }
     setBusyPull(false); setConfirmList(null);
-    setMsg({ type: 'success', text: 'Pulled out and recorded in the pull-out history.' });
+    setMsg({ type: 'success', text: 'Pulled out from stock.' });
     load();
   }
 
@@ -62,7 +62,7 @@ export default function InventoryPanel() {
     });
     if (error) return setMsg({ type: 'danger', text: error.code === '23505' ? 'That medicine already exists.' : error.message });
     setMed({ name: '', unit: 'pcs', reorder_level: 20, category: '' });
-    setMsg({ type: 'success', text: 'Medicine added. You can now stock-in a batch for it.' });
+    setMsg({ type: 'success', text: 'Medicine added.' });
     load();
   }
 
@@ -78,18 +78,30 @@ export default function InventoryPanel() {
     });
     if (error) return setMsg({ type: 'danger', text: error.message });
     setBatch({ medicine_id: '', batch_no: '', quantity: '', expiration_date: '' });
-    setMsg({ type: 'success', text: 'Batch added to stock.' });
+    setMsg({ type: 'success', text: 'Batch added.' });
     load();
   }
+
+  const [open, setOpen] = useState({});
+  const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  const FoldHead = ({ id, icon, title }) => (
+    <button type="button" onClick={() => toggle(id)} aria-expanded={!!open[id]}
+      style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', background: 'none', border: 0, padding: 0, textAlign: 'left', color: 'var(--primary-dark)', fontWeight: 700, fontSize: '1.25rem' }}>
+      <span><i className={`bi ${icon} me-2 text-primary`} />{title}</span>
+      <i className={`bi bi-chevron-${open[id] ? 'up' : 'down'}`} style={{ fontSize: '1rem' }} />
+    </button>
+  );
 
   const STATUS_BADGE = { Available: 'success', 'Low stock': 'warning', 'Out of stock': 'danger' };
 
   return (
-    <div className="row g-4">
-      <div className="col-lg-4">
-        {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
-        <form className="panel-card mb-4" onSubmit={addBatch}>
-          <h5 className="mb-3">Stock-In Form (New Batch)</h5>
+    <div>
+      {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+      <div className="row g-4 mb-4 align-items-start">
+      <div className="col-lg-6">
+        <form className="panel-card" onSubmit={addBatch}>
+          <FoldHead id="stockin" icon="bi-box-arrow-in-down" title="Stock-In Form (New Batch)" />
+          {open.stockin && <div className="mt-3">
           <div className="mb-3"><label className="form-label required">Medicine</label>
             <select className="form-select" value={batch.medicine_id} onChange={(e) => setBatch({ ...batch, medicine_id: e.target.value })} required>
               <option value="" disabled>Select medicine</option>
@@ -105,10 +117,13 @@ export default function InventoryPanel() {
               <input type="date" className="form-control" min={todayISO()} value={batch.expiration_date} onChange={(e) => setBatch({ ...batch, expiration_date: e.target.value })} required /></div>
           </div>
           <button className="btn btn-primary-custom w-100">Add batch</button>
+          </div>}
         </form>
-
+      </div>
+      <div className="col-lg-6">
         <form className="panel-card" onSubmit={addMedicine}>
-          <h5 className="mb-3">Add New Medicine</h5>
+          <FoldHead id="newmed" icon="bi-plus-square" title="Add New Medicine" />
+          {open.newmed && <div className="mt-3">
           <div className="mb-3"><label className="form-label required">Name</label>
             <input className="form-control" placeholder="e.g. Paracetamol 500mg" value={med.name} onChange={(e) => setMed({ ...med, name: e.target.value })} required /></div>
           <div className="mb-3"><label className="form-label">Used for</label>
@@ -121,12 +136,15 @@ export default function InventoryPanel() {
               <input type="number" min="0" className="form-control" value={med.reorder_level} onChange={(e) => setMed({ ...med, reorder_level: e.target.value })} /></div>
           </div>
           <button className="btn btn-outline-primary-custom w-100">Add medicine</button>
+          </div>}
         </form>
       </div>
+      </div>
 
-      <div className="col-lg-8">
+      <div>
         <div className="panel-card mb-4">
-          <h5 className="mb-3">Stock Summary</h5>
+          <FoldHead id="summary" icon="bi-list-check" title="Stock Summary" />
+          {open.summary && <div className="mt-3">
           {stock.length === 0 ? <div className="text-secondary">No medicines yet. Add one to get started.</div> : (
             <div className="table-responsive">
               <table className="table mb-0">
@@ -144,10 +162,12 @@ export default function InventoryPanel() {
               </table>
             </div>
           )}
+          </div>}
         </div>
 
         <div className="panel-card">
-          <h5 className="mb-1">FEFO Batch Order</h5>
+          <FoldHead id="fefo" icon="bi-sort-numeric-down" title="FEFO Batch Order" />
+          {open.fefo && <div className="mt-2">
           <p className="text-secondary small">Earliest expiration first — this is the order stock is dispensed in. Expired batches are never dispensed.</p>
           {batches.some((b) => daysUntil(b.expiration_date) < 0) && (
             <div className="alert alert-danger d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
@@ -178,10 +198,12 @@ export default function InventoryPanel() {
               </table>
             </div>
           )}
+          </div>}
         </div>
 
         <div className="panel-card mt-4">
-          <h5 className="mb-1">Pull-out History</h5>
+          <FoldHead id="pullout" icon="bi-box-arrow-up" title="Pull-out History" />
+          {open.pullout && <div className="mt-2">
           <p className="text-secondary small">Medicine pulled out of the health center because it expired or is about to.</p>
           {disposals.length === 0 ? <div className="text-secondary">Nothing removed yet.</div> : (
             <div className="table-responsive">
@@ -202,6 +224,7 @@ export default function InventoryPanel() {
               </table>
             </div>
           )}
+          </div>}
         </div>
       </div>
       <Modal show={!!confirmList} title="Pull out from stock" icon="bi-box-arrow-up" onClose={() => !busyPull && setConfirmList(null)}

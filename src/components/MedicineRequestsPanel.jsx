@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { downloadMedicineSlip } from '../lib/medicineSlip.js';
 
 const itemsOf = (r) => (r.items?.length ? r.items : [{ name: r.medicine_name, result: null }]);
 
@@ -38,7 +37,7 @@ export default function MedicineRequestsPanel() {
       try { const j = await error.context.json(); if (j?.error) text = j.error; } catch { /* keep message */ }
       return setMsg({ type: 'danger', text: `Could not send: ${text}` });
     }
-    setMsg({ type: 'success', text: `Email with the request slip (PDF) sent to ${r.requester_name} (${data?.available ?? 0} available, ${data?.unavailable ?? 0} not available).` });
+    setMsg({ type: 'success', text: `Email sent to ${r.requester_name}.` });
     load();
   }
 
@@ -104,7 +103,6 @@ export default function MedicineRequestsPanel() {
                     <i className={`bi ${it.result === 'available' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'} me-1`} />{it.name}
                   </span>
                 ))}</div>
-                <div className="mt-1"><button type="button" className="btn btn-sm btn-outline-primary-custom" onClick={() => downloadMedicineSlip(r.id).catch((e) => setMsg({ type: 'danger', text: e.message }))}><i className="bi bi-download me-1" />Download slip (PDF)</button></div>
                 <div className="mt-1">
                   {(r.given ?? []).length > 0
                     ? <span className="text-success"><i className="bi bi-box-seam me-1" />Given: {r.given.map((g) => `${g.name} × ${g.quantity} ${g.unit ?? ''}`.trim()).join(', ')}</span>
