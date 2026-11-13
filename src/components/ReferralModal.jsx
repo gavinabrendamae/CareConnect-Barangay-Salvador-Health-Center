@@ -15,6 +15,7 @@ function savePdf(b64, name) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+// The hospital referral form. Opens from a positive lab result.
 export default function ReferralModal({ lab, patient: patientProp, onClose, onSaved }) {
   const { user, profile } = useAuth();
   const [patient, setPatient] = useState(null);
@@ -50,6 +51,7 @@ export default function ReferralModal({ lab, patient: patientProp, onClose, onSa
     })();
   }, [lab, patientProp]);
 
+  // Saves the referral (once), emails the e-Slip to the patient's Gmail, and downloads a PDF copy.
   async function issue(sendEmail) {
     setMsg(null);
     setBusy(true);
@@ -76,7 +78,7 @@ export default function ReferralModal({ lab, patient: patientProp, onClose, onSa
     setMsg({ type, text: notes.join(' ') });
     setBusy(false);
   }
-  const save = (e) => { e.preventDefault(); issue(Boolean(patient?.email)); };
+  const save = (e) => { e.preventDefault(); e.stopPropagation(); issue(Boolean(patient?.email)); };
 
   const locked = Boolean(existing);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });

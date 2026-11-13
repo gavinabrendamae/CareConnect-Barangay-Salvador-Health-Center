@@ -164,7 +164,7 @@ export default function ConsultationPanel({ queueItem, onBack, onFinished, onLab
             <textarea rows="3" className="form-control" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
 
           {hasLab && <PatientLabResults patient={patient} queueId={queueItem.id} title="Laboratory (this visit)" onChanged={loadReferral} />}
-          <LabRequestBox embedded patient={patient} queueItem={queueItem} defaultNote={f.complaint} onRequested={onLabRequested} />
+          {!hasLab && <LabRequestBox embedded patient={patient} queueItem={queueItem} defaultNote={f.complaint} onRequested={onLabRequested} />}
 
           <div className="d-flex justify-content-between align-items-center mb-2">
             <h6 className="fw-bold mb-0">E-Prescription (FEFO auto-dispense)</h6>

@@ -30,6 +30,7 @@ export default function IntakePanel() {
   const [purpose, setPurpose] = useState('');          // '', 'sick', 'checkup', 'prenatal'
   const [resetKey, setResetKey] = useState(0);     // bumps after each saved patient -> fresh form + fresh search box
   const sick = purpose === 'sick';
+  const baby = !!patient?.birth_date && calcAge(patient.birth_date) < 1;
   const purposeInfo = PURPOSES.find((p) => p.key === purpose);
 
   const loadPending = useCallback(async () => {
@@ -95,8 +96,8 @@ export default function IntakePanel() {
     if (sick && !f.symptom_category) return setMsg({ type: 'danger', text: 'Please choose at least one symptom category.' });
     const complaint = f.chief_complaint.trim() || purposeInfo?.reason || '';
     const category = sick ? f.symptom_category : purposeInfo.cat;
-    if ((f.bp_systolic === '') !== (f.bp_diastolic === '')) return setMsg({ type: 'danger', text: 'Enter both systolic and diastolic blood pressure.' });
-    if (f.bp_systolic === '' && f.weight_kg === '' && f.height_cm === '' && f.temperature_c === '' && f.pulse_rate === '') {
+    if (!baby && (f.bp_systolic === '') !== (f.bp_diastolic === '')) return setMsg({ type: 'danger', text: 'Enter both systolic and diastolic blood pressure.' });
+    if ((baby || f.bp_systolic === '') && f.weight_kg === '' && f.height_cm === '' && f.temperature_c === '' && f.pulse_rate === '') {
       return setMsg({ type: 'danger', text: 'Enter at least one vital sign.' });
     }
     const range = (label, v, min, max, unit = '') => {
@@ -105,15 +106,15 @@ export default function IntakePanel() {
       return n >= min && n <= max ? null : `${label} should be between ${min} and ${max}${unit}.`;
     };
     const problem =
-      range('BP systolic', f.bp_systolic, 40, 300) || range('BP diastolic', f.bp_diastolic, 20, 200) ||
-      (f.bp_systolic !== '' && Number(f.bp_systolic) <= Number(f.bp_diastolic) ? 'Systolic must be higher than diastolic.' : null) ||
+      (!baby && (range('BP systolic', f.bp_systolic, 40, 300) || range('BP diastolic', f.bp_diastolic, 20, 200))) ||
+      (!baby && f.bp_systolic !== '' && Number(f.bp_systolic) <= Number(f.bp_diastolic) ? 'Systolic must be higher than diastolic.' : null) ||
       range('Temperature', f.temperature_c, 30, 45, ' °C') || range('Pulse', f.pulse_rate, 20, 250, ' bpm') ||
       range('Weight', f.weight_kg, 0.5, 500, ' kg') || range('Height', f.height_cm, 20, 250, ' cm');
     if (problem) return setMsg({ type: 'danger', text: problem });
     setBusy(true);
     const { data: vit, error } = await supabase.from('vitals').insert({
       patient_id: patient.id,
-      bp_systolic: num(f.bp_systolic), bp_diastolic: num(f.bp_diastolic),
+      bp_systolic: baby ? null : num(f.bp_systolic), bp_diastolic: baby ? null : num(f.bp_diastolic),
       weight_kg: num(f.weight_kg), height_cm: num(f.height_cm),
       temperature_c: num(f.temperature_c), pulse_rate: num(f.pulse_rate),
       chief_complaint: complaint, symptom_category: category, recorded_by: user.id,
@@ -178,10 +179,12 @@ export default function IntakePanel() {
           {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
           <fieldset disabled={!patient}>
             <div className="row g-3">
+              {!baby && <>
               <div className="col-6 col-md-3"><label className="form-label">BP systolic</label>
                 <input type="number" className="form-control" placeholder="120" value={f.bp_systolic} onChange={set('bp_systolic')} /></div>
               <div className="col-6 col-md-3"><label className="form-label">BP diastolic</label>
                 <input type="number" className="form-control" placeholder="80" value={f.bp_diastolic} onChange={set('bp_diastolic')} /></div>
+              </>}
               <div className="col-6 col-md-3"><label className="form-label">Temp (°C)</label>
                 <input type="number" step="0.1" className="form-control" value={f.temperature_c} onChange={set('temperature_c')} /></div>
               <div className="col-6 col-md-3"><label className="form-label">Pulse (bpm)</label>
