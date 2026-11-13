@@ -29,7 +29,7 @@ function useSignedUrl(path) {
 
 // One laboratory request: pending → upload the result photo; resulted → view + refer to hospital.
 export function LabCard({ lab, showPatient = false, onChanged }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [flag, setFlag] = useState('');
@@ -41,6 +41,13 @@ export function LabCard({ lab, showPatient = false, onChanged }) {
   const imgUrl = useSignedUrl(lab.result_path);
   const referred = (lab.referrals ?? []).length > 0;
   const needsReview = lab.patient_uploaded && !lab.reviewed_at;
+
+  useEffect(() => {
+    if (profile?.role !== 'admin' || lab.status === 'pending' || lab.result_flag !== 'abnormal' || needsReview || referred) return;
+    const key = `ref-auto-${lab.id}`;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch { /* ignore */ }
+    setReferring(true);
+  }, [profile?.role, lab.id, lab.status, lab.result_flag, needsReview, referred]);
 
   useEffect(() => {
     if (!file) { setPreview(null); return undefined; }
@@ -80,13 +87,16 @@ export function LabCard({ lab, showPatient = false, onChanged }) {
     setMsg(null);
     if (!flag) return setMsg({ type: 'danger', text: 'Mark the result as Positive or Negative.' });
     setBusy(true);
-    const { error } = await supabase.from('lab_requests').update({
+    const { data, error } = await supabase.from('lab_requests').update({
       result_flag: flag, reviewed_at: new Date().toISOString(), resulted_by: user.id,
       result_notes: [lab.result_notes, notes.trim()].filter(Boolean).join(' · ') || null,
-    }).eq('id', lab.id);
+    }).eq('id', lab.id).select('id');
     if (error) { setBusy(false); return setMsg({ type: 'danger', text: error.message }); }
+    if (!data?.length) { setBusy(false); return setMsg({ type: 'danger', text: 'Review was not saved. You do not have permission to update this lab result.' }); }
+    const positive = flag === 'abnormal';
     setBusy(false); setFlag(''); setNotes('');
     onChanged?.();
+    if (positive) setReferring(true);
   }
 
   const pending = lab.status === 'pending';
@@ -110,7 +120,7 @@ export function LabCard({ lab, showPatient = false, onChanged }) {
       </div>
 
       {pending ? (
-        <form className="mt-3" onSubmit={submitResult}>
+        <div className="mt-3">
           {msg && <div className={`alert alert-${msg.type} py-2`}>{msg.text}</div>}
           <label className="form-label small fw-bold">Result photo</label>
           <input type="file" accept="image/*" capture="environment" className="form-control mb-2" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -121,15 +131,15 @@ export function LabCard({ lab, showPatient = false, onChanged }) {
             <div className="form-check"><input className="form-check-input" type="radio" name={`flag-${lab.id}`} id={`a-${lab.id}`} checked={flag === 'abnormal'} onChange={() => setFlag('abnormal')} /><label className="form-check-label text-danger fw-bold" htmlFor={`a-${lab.id}`}>Positive <span className="fw-normal">(matches the suspected impression)</span></label></div>
           </div>
           <input className="form-control form-control-sm mb-2" placeholder="Findings (e.g. Dengue NS1 positive, platelets 90k)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          <button className="btn btn-sm btn-primary-custom" disabled={busy}>{busy ? 'Uploading...' : 'Save result'}</button>
-        </form>
+          <button type="button" onClick={submitResult} className="btn btn-sm btn-primary-custom" disabled={busy}>{busy ? 'Uploading...' : 'Save result'}</button>
+        </div>
       ) : (
         <div className="mt-3">
           {lab.result_notes && <div className="mb-2"><strong>Findings:</strong> {lab.result_notes}</div>}
           {imgUrl ? <img src={imgUrl} alt="Lab result" className="lab-img" onClick={() => setZoom(true)} style={{ cursor: 'zoom-in' }} /> : lab.result_path && <div className="text-secondary small">Loading photo...</div>}
           <div className="small text-secondary mt-1">Result added {formatDateTime(lab.resulted_at)}</div>
           {needsReview && (
-            <form className="mt-3 border-top pt-3" onSubmit={review}>
+            <div className="mt-3 border-top pt-3">
               <div className="small fw-bold mb-1">Midwife review</div>
               {msg && <div className={`alert alert-${msg.type} py-2`}>{msg.text}</div>}
               <div className="d-flex gap-3 mb-2">
@@ -137,8 +147,8 @@ export function LabCard({ lab, showPatient = false, onChanged }) {
                 <div className="form-check"><input className="form-check-input" type="radio" name={`rf-${lab.id}`} id={`ra-${lab.id}`} checked={flag === 'abnormal'} onChange={() => setFlag('abnormal')} /><label className="form-check-label text-danger fw-bold" htmlFor={`ra-${lab.id}`}>Positive <span className="fw-normal">(matches the suspected impression)</span></label></div>
               </div>
               <input className="form-control form-control-sm mb-2" placeholder="Midwife notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-              <button className="btn btn-sm btn-primary-custom" disabled={busy}><i className="bi bi-check2-circle me-1" />{busy ? 'Saving...' : 'Save review'}</button>
-            </form>
+              <button type="button" onClick={review} className="btn btn-sm btn-primary-custom" disabled={busy}><i className="bi bi-check2-circle me-1" />{busy ? 'Saving...' : 'Save review'}</button>
+            </div>
           )}
           {lab.result_flag === 'normal' && !needsReview && <div className="alert alert-success py-2 small mt-2 mb-0">Negative: resume the consultation, add your notes and a prescription if needed.</div>}
           {(lab.result_flag === 'abnormal' || referred) && (
