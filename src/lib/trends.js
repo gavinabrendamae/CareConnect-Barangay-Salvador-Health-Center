@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { splitCategories, NON_ILLNESS } from './symptoms.js';
 
 const pad = (n) => String(n).padStart(2, '0');
+export const TREND_COLORS = ['#0C4C8A', '#2a9d8f', '#e8a317', '#d1495b', '#7a5cc4', '#3aa5c0'];
 export const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 
 export function monthRange(fromISO, toISO) {

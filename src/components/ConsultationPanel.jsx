@@ -99,6 +99,7 @@ export default function ConsultationPanel({ queueItem, onBack, onFinished, onLab
   async function submit(e) {
     e.preventDefault();
     setMsg(null);
+    if (!f.diagnosis.trim()) return setMsg({ type: 'danger', text: 'Clinical impression is required.' });
     const filled = lines.filter((l) => l.medicine_id || l.quantity);
     for (const l of filled) {
       if (!l.medicine_id || !(Number(l.quantity) > 0)) return setMsg({ type: 'danger', text: 'Each medicine line needs a medicine and a quantity above zero.' });
@@ -151,7 +152,7 @@ export default function ConsultationPanel({ queueItem, onBack, onFinished, onLab
         </button>
       </div>
 
-      <form className="panel-card" onSubmit={submit}>
+      <form className="panel-card" onSubmit={(e) => e.preventDefault()}>
         <h5 className="mb-3">Clinical Note / EMR Entry</h5>
         <PatientPicker value={patient} onChange={setPatient} />
         {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
@@ -192,7 +193,7 @@ export default function ConsultationPanel({ queueItem, onBack, onFinished, onLab
               </div>
             );
           })}
-          <button className="btn btn-primary-custom mt-3" disabled={busy}>{busy ? 'Saving...' : 'Save consultation'}</button>
+          <button type="button" onClick={submit} className="btn btn-primary-custom mt-3" disabled={busy}>{busy ? 'Saving...' : 'Save consultation'}</button>
         </fieldset>
       </form>
 

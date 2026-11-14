@@ -7,7 +7,7 @@ import { formatDate, fullName, todayISO } from '../lib/format.js';
 
 const pad = (x) => String(x).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
+// 3 months after a date; if that lands on a weekend it moves to Monday.
 function returnDateFor(dateISO) {
   const d = new Date(`${dateISO}T00:00:00`);
   d.setMonth(d.getMonth() + 3);
@@ -57,9 +57,14 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
     return error ? `Gmail notice failed: ${reason}` : (data?.emailSent ? `Gmail notice sent to ${data.emailSent} address(es).` : 'In-app notice sent (no email on file).');
   }
 
+  async function notifyDue(dueDate) {
+    const { data, error } = await supabase.functions.invoke('family-planning-summon', { body: { items: [{ patient_id: patientId, mode: 'due', due_date: dueDate }] } });
+    return error || data?.failed?.length ? ' Return-date notice failed.' : '';
+  }
+
   async function setVaccineDate(n, value) {
     setMsg(null);
-    if (!value) {   
+    if (!value) {   // cleared: remove this injection and its automatic return date
       await supabase.from('immunization_records').delete().eq('patient_id', patientId).eq('vaccine', DEPO).eq('dose_no', n);
       const nxt = recs[n + 1];
       if (nxt && !nxt.confirmed_at) await supabase.from('immunization_records').delete().eq('patient_id', patientId).eq('vaccine', DEPO).eq('dose_no', n + 1);
@@ -80,11 +85,28 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
         { onConflict: 'patient_id,vaccine,dose_no' });
     }
     const note = await notify(n, 'given');
-    setMsg({ type: note.startsWith('Gmail notice failed') ? 'warning' : 'success', text: `Injection ${n} recorded. Date of return set to ${formatDate(ret)}. ${note}` });
+    const dueNote = await notifyDue(ret);
+    setMsg({ type: note.startsWith('Gmail notice failed') || dueNote ? 'warning' : 'success', text: `Injection ${n} recorded. Date of return set to ${formatDate(ret)}. ${note}${dueNote}` });
     load();
   }
 
-  async function setReturnDate(n, value) {   
+  async function setFirstDate(value) {
+    setMsg(null);
+    if (!value) return setVaccineDate(1, '');
+    if (value <= today) return setVaccineDate(1, value);
+    let v = value;
+    if (isWeekend(v)) v = nextMonday(v);
+    const { error } = await supabase.from('immunization_records').upsert(
+      { patient_id: patientId, vaccine: DEPO, dose_no: 1, given_date: v, given_by: user.id, confirmed_at: null, confirmed_by: null,
+        given_notified_at: null, reminded_at: null, notified_at: null },
+      { onConflict: 'patient_id,vaccine,dose_no' });
+    if (error) return setMsg({ type: 'danger', text: error.message });
+    const dueNote = await notifyDue(v);
+    setMsg({ type: dueNote ? 'warning' : 'success', text: `First injection scheduled on ${formatDate(v)}.${dueNote}` });
+    load();
+  }
+
+  async function setReturnDate(n, value) {   // n = the dose this date belongs to (the next injection)
     setMsg(null);
     if (!value) return;
     let v = value;
@@ -94,6 +116,8 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
         given_notified_at: null, reminded_at: null, notified_at: null },
       { onConflict: 'patient_id,vaccine,dose_no' });
     if (error) return setMsg({ type: 'danger', text: error.message });
+    const dueNote = await notifyDue(v);
+    setMsg({ type: dueNote ? 'warning' : 'success', text: `Date of return set to ${formatDate(v)}.${dueNote}` });
     load();
   }
 
@@ -124,17 +148,19 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
             const cur = recs[n];
             const nxt = recs[n + 1];
             const given = cur?.confirmed_at ? cur : null;
+            const sched = n === 1 && cur && !cur.confirmed_at ? cur : null;
             const prevGiven = n === 1 || Boolean(recs[n - 1]?.confirmed_at);
             return (
               <tr key={n}>
                 <td className="c imm-vax">{n}</td>
                 <td className="c">
                   {editable
-                    ? (given || prevGiven) && (
-                      <input type="date" className={`imm-input ${given ? '' : 'imm-empty'}`} max={today} value={given?.given_date ?? ''}
-                        onChange={(e) => setVaccineDate(n, e.target.value)} title="Date the injection was given" />
+                    ? (given || sched || prevGiven) && (
+                      <input type="date" className={`imm-input ${given ? '' : 'imm-empty'}`} max={n === 1 && !given ? undefined : today} value={given?.given_date ?? sched?.given_date ?? ''}
+                        onChange={(e) => (n === 1 && !given ? setFirstDate(e.target.value) : setVaccineDate(n, e.target.value))}
+                        title={n === 1 && !given ? 'Pick a future date to schedule, or today / a past date if already given' : 'Date the injection was given'} />
                     )
-                    : given ? <span className="imm-ok">{formatDate(given.given_date)}</span> : null}
+                    : given ? <span className="imm-ok">{formatDate(given.given_date)}</span> : sched ? <span className="imm-soon">{formatDate(sched.given_date)}</span> : null}
                 </td>
                 <td className="c">
                   {nxt && (editable && !nxt.confirmed_at
@@ -148,7 +174,7 @@ export default function FamilyPlanningCard({ patientId, editable = false, hideIf
       </table>
       <div className="imm-foot imm-noprint">
         {editable
-          ? 'Type the Date of Vaccine when the injection is given. The Date of Return is set automatically 3 months later (weekdays only) and can be changed. The next row stays blank until that injection is given.'
+          ? 'For the first injection, pick a future date to schedule it, or today to record it as given. Type the Date of Vaccine when each injection is given. The Date of Return is set automatically 3 months later (weekdays only) and can be changed. The next row stays blank until that injection is given.'
           : 'Your Date of Return is the day to come back for your next injection.'}
       </div>
     </div>

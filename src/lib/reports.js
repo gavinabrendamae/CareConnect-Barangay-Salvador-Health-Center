@@ -1,12 +1,13 @@
 import { supabase } from './supabase';
 import { staffOr, noStaff } from './staffFilter.js';
-import { calcAge, formatDate, fullName } from './format.js';
+import { calcAge, dueToday, formatDate, fullName } from './format.js';
 import { splitCategories, illnessSymptoms, isCheckupOnly } from './symptoms.js';
-import { fetchSymptomTrends } from './trends.js';
+import { fetchSymptomTrends, TREND_COLORS } from './trends.js';
 
 export const BARANGAY_NAME = 'Barangay Salvador Health Center';
 const FACILITY_ADDRESS = 'Barangay Salvador, Santiago City, Isabela';
 
+// Loads a logo from /public/Resources as a data URL (null when the file is missing).
 async function loadLogo(name) {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}Resources/${name}`);
@@ -20,7 +21,7 @@ export const REPORT_TYPES = [
   { key: 'morbidity', label: 'Morbidity & Consultation Report', note: 'Top diagnoses, complaints and consultation log (for Barangay / LGU / DOH).' },
   { key: 'medicines', label: 'Medicine Inventory & Dispensing Report', note: 'Current stock, FEFO batches, expiring items and quantities dispensed in the period.' },
   { key: 'immunization', label: 'Immunization Report', note: 'Vaccines scheduled, given and missed in the period, per vaccine and per patient.' },
-  { key: 'trends', label: 'Monthly Symptom Trends', note: 'Cases per symptom for every month in the period, with a line graph for each symptom.' },
+  { key: 'trends', label: 'Monthly Symptom Trends', note: 'Cases per symptom for every month in the period, with one line graph comparing the symptoms.' },
   { key: 'residents', label: 'Resident Masterlist', note: 'Registered residents with totals per purok and per patient type.' },
 ];
 
@@ -65,9 +66,8 @@ export async function buildReport(type, from, to) {
       title: 'Morbidity & Consultation Report', subtitle: period, filename: `morbidity_${from}_${to}`,
       sections: [
         { heading: 'Summary', columns: ['Item', 'Count'], rows: [['Total consultations', rows.length], ['Unique patients', new Set(rows.map((r) => fullName(r.patient))).size]] },
-        { heading: 'Diagnosis given', columns: ['Diagnosis', 'Cases'], rows: tally(sick.map((r) => r.diagnosis?.toLowerCase())) },
         { heading: 'Symptoms', columns: ['Complaint', 'Cases'], rows: tally(sick.flatMap((r) => illnessSymptoms(r).map((x) => x?.toLowerCase()))).slice(0, 15) },
-        { heading: 'Regular check-ups & prenatal visits (not counted as symptoms)', columns: ['Type', 'Visits'], rows: tally(checks.map(kindOf)) },
+        { heading: 'Regular check-ups & prenatal visits', columns: ['Type', 'Visits'], rows: tally(checks.map(kindOf)) },
         {
           heading: 'Check-up & prenatal log', columns: ['Date', 'Patient', 'Age', 'Purok', 'Type', 'Notes'],
           rows: checks.map((r) => [formatDate(r.consulted_at), fullName(r.patient), calcAge(r.patient?.birth_date), r.patient?.purok ?? '', kindOf(r), r.diagnosis ?? r.complaint ?? '']),
@@ -90,7 +90,7 @@ export async function buildReport(type, from, to) {
           heading: 'Cases per symptom per month', columns: ['Symptom', ...months.map((m) => m.full), 'Total'],
           rows: series.map((s) => [s.name.replace(/\b\w/g, (c) => c.toUpperCase()), ...s.values, s.total]),
         },
-        { heading: 'Line graph per symptom', columns: ['Symptom', 'Total'], rows: [], chart: { months, series } },
+        { heading: 'Line graph', columns: ['Symptom', 'Total'], rows: [], chart: { months, series } },
       ],
     };
   }
@@ -117,22 +117,24 @@ export async function buildReport(type, from, to) {
   }
 
   if (type === 'immunization') {
-    const rows = await fetchAll(() => supabase.from('vaccinations')
-      .select('vaccine_name, dose_label, scheduled_date, administered_date, status, patient:patients(first_name, middle_name, last_name, suffix, birth_date, purok, patient_type)')
-      .gte('scheduled_date', from).lte('scheduled_date', to).order('scheduled_date'));
+    const today = dueToday();
+    const rows = (await fetchAll(() => supabase.from('immunization_records')
+      .select('vaccine, dose_no, given_date, confirmed_at, patient:patients(first_name, middle_name, last_name, suffix, birth_date, purok, patient_type)')
+      .gt('dose_no', 0).gte('given_date', from).lte('given_date', to).order('given_date')))
+      .map((r) => ({ ...r, status: r.confirmed_at ? 'Given' : r.given_date < today ? 'Missed' : 'Pending' }));
     const per = {};
     rows.forEach((r) => {
-      per[r.vaccine_name] = per[r.vaccine_name] || { scheduled: 0, administered: 0, missed: 0 };
-      per[r.vaccine_name][r.status]++;
+      per[r.vaccine] = per[r.vaccine] || { Pending: 0, Given: 0, Missed: 0 };
+      per[r.vaccine][r.status] += 1;
     });
     return {
       title: 'Immunization Report', subtitle: period, filename: `immunization_${from}_${to}`,
       sections: [
-        { heading: 'Per vaccine', columns: ['Vaccine', 'Pending', 'Given', 'Missed'], rows: Object.entries(per).map(([n, c]) => [n, c.scheduled, c.administered, c.missed]) },
+        { heading: 'Per vaccine', columns: ['Vaccine', 'Pending', 'Given', 'Missed'], rows: Object.entries(per).map(([n, c]) => [n, c.Pending, c.Given, c.Missed]) },
         {
-          heading: 'Details', columns: ['Scheduled', 'Patient', 'Age', 'Purok', 'Type', 'Vaccine', 'Status', 'Given on'],
-          rows: rows.map((r) => [formatDate(r.scheduled_date), fullName(r.patient), calcAge(r.patient?.birth_date), r.patient?.purok ?? '', r.patient?.patient_type ?? '',
-            `${r.vaccine_name}${r.dose_label ? ` (${r.dose_label})` : ''}`, r.status, formatDate(r.administered_date)]),
+          heading: 'Details', columns: ['Date', 'Patient', 'Age', 'Purok', 'Type', 'Vaccine', 'Status', 'Given on'],
+          rows: rows.map((r) => [formatDate(r.given_date), fullName(r.patient), calcAge(r.patient?.birth_date), r.patient?.purok ?? '', r.patient?.patient_type ?? '',
+            `${r.vaccine} (dose ${r.dose_no})`, r.status, r.confirmed_at ? formatDate(r.given_date) : '']),
         },
       ],
     };
@@ -158,42 +160,43 @@ export async function buildReport(type, from, to) {
 function drawTrendCharts(doc, { months, series }, startY) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const cols = 2; const gap = 20; const cw = (pageW - 80 - gap * (cols - 1)) / cols; const ch = 200;
+  if (series.length === 0) { doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text('No records.', 40, startY + 10); return startY + 24; }
+  const ch = 280; const legendH = 18 * Math.ceil(series.length / 2) + 8;
   let y = startY;
-  if (series.length === 0) { doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text('No records.', 40, y + 10); return y + 24; }
-  series.forEach((s, i) => {
-    const col = i % cols;
-    if (col === 0 && i > 0) y += ch + 14;
-    if (col === 0 && y + ch > pageH - 50) { doc.addPage(); y = 40; }
-    const x0 = 40 + col * (cw + gap);
-    const L = x0 + 28; const R = x0 + cw - 8; const T = y + 30; const B = y + ch - 26;
-    const yMax = Math.max(2, ...s.values);
-    const yMaxN = yMax <= 4 ? yMax : Math.ceil(yMax / 2) * 2;
-    doc.setDrawColor(225, 233, 228); doc.setLineWidth(0.5);
-    doc.roundedRect(x0, y, cw, ch, 4, 4);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
-    doc.text(s.name.replace(/\b\w/g, (c) => c.toUpperCase()), x0 + 10, y + 16);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
-    doc.text(`${s.total} total`, x0 + cw - 10, y + 17, { align: 'right' });
-    const ticks = yMaxN <= 4 ? Array.from({ length: yMaxN + 1 }, (_, k) => k) : [0, yMaxN / 2, yMaxN];
-    const py = (v) => T + (1 - v / yMaxN) * (B - T);
-    ticks.forEach((t) => {
-      doc.setDrawColor(227, 234, 230); doc.line(L, py(t), R, py(t));
-      doc.setFontSize(10); doc.text(String(t), L - 4, py(t) + 2, { align: 'right' });
-    });
-    const n = months.length;
-    const px = (k) => (n === 1 ? (L + R) / 2 : L + (k / (n - 1)) * (R - L));
-    const step = n > 8 ? 2 : 1;
-    months.forEach((m, k) => { if (k % step === 0 || k === n - 1) doc.text(m.label, px(k), B + 15, { align: 'center' }); });
-    doc.setDrawColor(42, 120, 214); doc.setLineWidth(1.8);
-    for (let k = 1; k < n; k++) doc.line(px(k - 1), py(s.values[k - 1]), px(k), py(s.values[k]));
-    doc.setFillColor(42, 120, 214);
-    s.values.forEach((v, k) => doc.circle(px(k), py(v), 2.6, 'F'));
-    doc.setTextColor(0, 0, 0); doc.setFontSize(10);
-    s.values.forEach((v, k) => { if (v > 0) doc.text(String(v), px(k), py(v) - 5, { align: 'center' }); });
-    doc.setTextColor(0, 0, 0); doc.setLineWidth(0.5);
+  if (y + ch + legendH > pageH - 50) { doc.addPage(); y = 40; }
+  const x0 = 40; const cw = pageW - 80;
+  const L = x0 + 34; const R = x0 + cw - 14; const T = y + 18; const B = y + ch - 26;
+  const max = Math.max(2, ...series.flatMap((s) => s.values));
+  const yMaxN = max <= 4 ? max : Math.ceil(max / 2) * 2;
+  doc.setDrawColor(190, 200, 215); doc.setLineWidth(0.5);
+  doc.roundedRect(x0, y, cw, ch, 4, 4);
+  const ticks = yMaxN <= 4 ? Array.from({ length: yMaxN + 1 }, (_, k) => k) : [0, yMaxN / 2, yMaxN];
+  const py = (v) => T + (1 - v / yMaxN) * (B - T);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+  ticks.forEach((t) => {
+    doc.setDrawColor(215, 224, 235); doc.line(L, py(t), R, py(t));
+    doc.text(String(t), L - 5, py(t) + 3, { align: 'right' });
   });
-  return y + ch + 24;
+  const n = months.length;
+  const px = (k) => (n === 1 ? (L + R) / 2 : L + (k / (n - 1)) * (R - L));
+  months.forEach((m, k) => doc.text(m.label, px(k), B + 15, { align: 'center' }));
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  series.forEach((s, i) => {
+    const [r, g, b] = rgb(TREND_COLORS[i % TREND_COLORS.length]);
+    doc.setDrawColor(r, g, b); doc.setFillColor(r, g, b); doc.setLineWidth(1.8);
+    for (let k = 1; k < n; k++) doc.line(px(k - 1), py(s.values[k - 1]), px(k), py(s.values[k]));
+    s.values.forEach((v, k) => doc.circle(px(k), py(v), 2.8, 'F'));
+  });
+  doc.setLineWidth(0.5);
+  const colW = cw / 2;
+  series.forEach((s, i) => {
+    const [r, g, b] = rgb(TREND_COLORS[i % TREND_COLORS.length]);
+    const lx = x0 + (i % 2) * colW; const ly = y + ch + 16 + Math.floor(i / 2) * 18;
+    doc.setFillColor(r, g, b); doc.rect(lx, ly - 8, 10, 10, 'F');
+    doc.setTextColor(0, 0, 0); doc.setFontSize(10);
+    doc.text(`${s.name.replace(/\b\w/g, (c) => c.toUpperCase())} (${s.total})`, lx + 16, ly);
+  });
+  return y + ch + legendH + 16;
 }
 
 export async function exportPDF(report, preparedBy) {
@@ -255,7 +258,7 @@ export async function exportPDF(report, preparedBy) {
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
-    if (i === pages) doc.text(generated, 40, doc.internal.pageSize.getHeight() - 20); 
+    if (i === pages) doc.text(generated, 40, doc.internal.pageSize.getHeight() - 20); // last page only
     doc.text(`Page ${i} of ${pages}`, w - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
   }
   doc.save(`${report.filename}.pdf`);

@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { staffOr, noStaff } from '../lib/staffFilter.js';
-import { daysUntil, dueToday, monthStartISO, startOfTodayISO, todayISO } from '../lib/format.js';
+import { calcAge, daysUntil, dueToday, monthStartISO, startOfTodayISO, todayISO } from '../lib/format.js';
 import { illnessSymptoms } from '../lib/symptoms.js';
 import { topCounts } from './BarList.jsx';
-import { CHART_COLORS, HBarChart, SymptomTrendGrid } from './Charts.jsx';
+import { CHART_COLORS, DonutChart, HBarChart, SymptomTrendGrid } from './Charts.jsx';
 import { fetchSymptomTrends, firstOfMonthsAgo } from '../lib/trends.js';
 import StockAlerts from './StockAlerts.jsx';
+
+const AGE_GROUPS = [['Baby (under 1)', 0, 0], ['Child (1–17)', 1, 17], ['Adult (18–59)', 18, 59], ['Senior (60+)', 60, 200]];
+
+async function allResidents(so) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await noStaff(supabase.from('patients').select('purok, birth_date'), so).range(from, from + 999);
+    if (error) return { data: null, error };
+    rows.push(...data);
+    if (data.length < 1000) return { data: rows, error: null };
+  }
+}
 
 export default function AdminOverview() {
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   const [span, setSpan] = useState(6);
   const [trend, setTrend] = useState(null);
-  const [pick, setPick] = useState(null); 
+  const [pick, setPick] = useState(null); // symptom whose trend is open in the pop-up
 
   useEffect(() => {
     (async () => {
@@ -27,10 +39,22 @@ export default function AdminOverview() {
         supabase.from('medicine_batches').select('expiration_date').gt('quantity', 0),
         supabase.from('consultations').select('diagnosis, complaint, symptom_category').gte('consulted_at', month),
         supabase.from('prescriptions').select('quantity, medicine:medicines(name, unit)').gte('created_at', month),
+        allResidents(so),
       ]);
       const failed = res.find((r) => r.error);
       if (failed) return setError(failed.error.message);
-      const [pat, queue, vac, stock, batches, consults, rx] = res;
+      const [pat, queue, vac, stock, batches, consults, rx, people] = res;
+
+      const puroks = {};
+      const ages = AGE_GROUPS.map(([label]) => [label, 0]);
+      (people.data ?? []).forEach((p) => {
+        const k = (p.purok ?? '').trim() || 'No purok';
+        puroks[k] = (puroks[k] || 0) + 1;
+        if (!p.birth_date) return;
+        const a = calcAge(p.birth_date);
+        const gi = AGE_GROUPS.findIndex(([, lo, hi]) => a >= lo && a <= hi);
+        if (gi >= 0) ages[gi][1] += 1;
+      });
 
       const used = {};
       (rx.data ?? []).forEach((r) => {
@@ -47,6 +71,8 @@ export default function AdminOverview() {
         expiring: (batches.data ?? []).filter((b) => { const x = daysUntil(b.expiration_date); return x <= 30; }).length,
         symptoms: topCounts((consults.data ?? []).flatMap((c) => illnessSymptoms(c))),
         consumption: Object.entries(used).sort((a, b) => b[1] - a[1]).slice(0, 6),
+        puroks: Object.entries(puroks).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })),
+        ages,
       });
     })();
   }, []);
@@ -95,6 +121,17 @@ export default function AdminOverview() {
         <HBarChart rows={d.symptoms} multi onSelect={setPick} color={CHART_COLORS.blue} empty="No complaints recorded this month." />
       </div>
 
+      <div className="row g-4 mb-4">
+        <div className="col-lg-7"><div className="panel-card h-100">
+          <h5 className="mb-3">Residents per Purok</h5>
+          <HBarChart rows={d.puroks} multi unit="" empty="No residents registered yet." />
+        </div></div>
+        <div className="col-lg-5"><div className="panel-card h-100">
+          <h5 className="mb-3">Residents by Age Group</h5>
+          <DonutChart rows={d.ages} empty="No residents registered yet." />
+        </div></div>
+      </div>
+
       {pick && (
         <div className="modal d-block" style={{ background: 'rgba(15,30,50,.55)' }} onClick={() => setPick(null)} role="dialog" aria-modal="true">
           <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
@@ -119,11 +156,11 @@ export default function AdminOverview() {
       )}
 
       <div className="row g-4 mb-4">
-        <div className="col-lg-6"><div className="panel-card h-100">
+        <div className="col-12"><div className="panel-card">
           <h5 className="mb-3">FEFO Inventory — Medicine Consumption (this month)</h5>
-          <HBarChart rows={d.consumption} unit="units" color={CHART_COLORS.aqua} empty="Nothing dispensed this month." />
+          <HBarChart rows={d.consumption} unit="units" multi color={CHART_COLORS.aqua} empty="Nothing dispensed this month." />
         </div></div>
-        <div className="col-lg-6"><div className="panel-card h-100">
+        <div className="col-12"><div className="panel-card">
           <h5 className="mb-3">FEFO Inventory — Stock Alerts</h5>
           <StockAlerts />
         </div></div>

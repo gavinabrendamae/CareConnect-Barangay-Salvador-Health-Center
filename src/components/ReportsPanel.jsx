@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { fullName, todayISO } from '../lib/format.js';
-import { SymptomTrendGrid } from './Charts.jsx';
+import { MultiLineChart } from './Charts.jsx';
 import { REPORT_TYPES, buildReport, exportExcel, exportPDF } from '../lib/reports.js';
 
 export default function ReportsPanel() {
@@ -74,7 +74,7 @@ export default function ReportsPanel() {
               {preview.sections.map((s) => (
                 <div key={s.heading} className="mb-4">
                   <h6 className="fw-bold">{s.heading} {!s.chart && <span className="badge bg-secondary">{s.rows.length}</span>}</h6>
-                  {s.chart && <SymptomTrendGrid months={s.chart.months} series={s.chart.series} />}
+                  {s.chart && <MultiLineChart months={s.chart.months} series={s.chart.series} />}
                   {!s.chart && <div className="table-responsive" style={{ maxHeight: 280 }}>
                     <table className="table table-sm mb-0">
                       <thead><tr>{s.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>

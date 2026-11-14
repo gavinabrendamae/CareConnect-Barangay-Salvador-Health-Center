@@ -43,7 +43,7 @@ export default function DispenseLogPanel() {
       if (!data?.profile_id) return;
       supabase.from('medicine_requests').select('id, medicine_name, items, given, created_at')
         .eq('profile_id', data.profile_id).eq('status', 'notified').order('created_at', { ascending: false })
-        .then(({ data: r }) => setReqs(r ?? []));
+                .then(({ data: r }) => setReqs((r ?? []).filter((x) => (x.given ?? []).length < (Array.isArray(x.items) && x.items.length ? x.items.length : 1))));
     });
   }, [patient]);
 

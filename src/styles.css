@@ -465,3 +465,12 @@ body, button, input, select, textarea, .btn, .form-control, .form-select, h1, h2
   border: 1.5px solid var(--primary) !important;
   box-shadow: 0 4px 12px rgba(12,76,138,.10);
 }
+
+.sa-box{ background:linear-gradient(135deg,#e8f2fb 0%,#ffffff 60%,#dcecf8 100%); border:1px solid #bcd6ee; border-left:5px solid #2b78b8; border-radius:.7rem; padding:.9rem 1rem; color:#1F375D; }
+.sa-box strong{ color:#0C4C8A; }
+.sa-box ul li{ padding:.45rem 0; border-bottom:1px dashed #bcd6ee; }
+.sa-box ul li:last-child{ border-bottom:0; }
+.sa-box.expired{ background:linear-gradient(135deg,#fdf0ef 0%,#ffffff 60%,#f8dcd9 100%); border-color:#f0c4c0; border-left-color:#c0392b; }
+.sa-box.expired strong{ color:#a12a1f; }
+.sa-date{ background:#0C4C8A; color:#fff; font-size:.75rem; font-weight:700; padding:.15rem .6rem; border-radius:999px; white-space:nowrap; }
+.sa-box.expired .sa-date{ background:#c0392b; }

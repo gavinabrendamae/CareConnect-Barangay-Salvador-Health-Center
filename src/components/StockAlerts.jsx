@@ -35,9 +35,9 @@ export default function StockAlerts() {
   }
 
   const batchLine = (x) => (
-    <li key={x.id} className="d-flex justify-content-between">
+    <li key={x.id} className="d-flex justify-content-between align-items-center gap-3">
       <span>{x.medicine?.name} <span className="text-secondary small">batch {x.batch_no || '—'} · {x.quantity} {x.medicine?.unit}</span></span>
-      <span className="small">{formatDate(x.expiration_date)}</span>
+      <span className="sa-date">{formatDate(x.expiration_date)}</span>
     </li>
   );
 
@@ -45,27 +45,27 @@ export default function StockAlerts() {
     <div className="row g-3">
       {expired.length > 0 && (
         <div className="col-12">
-          <div className="alert alert-danger mb-0">
+          <div className="sa-box expired">
             <strong><i className="bi bi-x-octagon-fill me-2" />Expired — remove from shelf ({expired.length})</strong>
             <ul className="list-unstyled mb-0 mt-2">{expired.map(batchLine)}</ul>
           </div>
         </div>
       )}
       <div className="col-lg-6">
-        <div className="alert alert-warning mb-0 h-100">
+        <div className="sa-box h-100">
           <strong><i className="bi bi-hourglass-split me-2" />Expiring within {EXPIRING_DAYS} days ({expiring.length})</strong>
           {expiring.length === 0 ? <div className="small mt-2">None.</div> : <ul className="list-unstyled mb-0 mt-2">{expiring.map(batchLine)}</ul>}
         </div>
       </div>
       <div className="col-lg-6">
-        <div className="alert alert-warning mb-0 h-100">
+        <div className="sa-box h-100">
           <strong><i className="bi bi-capsule me-2" />Low / out of stock ({low.length})</strong>
           {low.length === 0 ? <div className="small mt-2">None.</div> : (
             <ul className="list-unstyled mb-0 mt-2">
               {low.map((m) => (
-                <li key={m.id} className="d-flex justify-content-between">
+                <li key={m.id} className="d-flex justify-content-between align-items-center gap-3">
                   <span>{m.name}</span>
-                  <span className="small">{m.available_quantity} {m.unit} · {m.status}</span>
+                  <span className="sa-date">{m.available_quantity} {m.unit} · {m.status}</span>
                 </li>
               ))}
             </ul>

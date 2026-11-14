@@ -18,6 +18,7 @@ export default function InventoryPanel() {
   const { user } = useAuth();
   const [medicines, setMedicines] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [fq, setFq] = useState('');
   const [stock, setStock] = useState([]);
   const [med, setMed] = useState({ name: '', unit: 'pcs', reorder_level: 20, category: '' });
   const [batch, setBatch] = useState({ medicine_id: '', batch_no: '', quantity: '', expiration_date: '' });
@@ -175,12 +176,13 @@ export default function InventoryPanel() {
               <button type="button" className="btn btn-sm btn-danger" onClick={() => setConfirmList(batches.filter((b) => daysUntil(b.expiration_date) < 0))}>Pull out all expired</button>
             </div>
           )}
+          <input className="form-control mb-3" placeholder="Search medicine or batch no." value={fq} onChange={(e) => setFq(e.target.value)} />
           {batches.length === 0 ? <div className="text-secondary">No batches in stock.</div> : (
             <div className="table-responsive">
               <table className="table mb-0">
                 <thead><tr><th>Medicine</th><th>Batch</th><th>Qty left</th><th>Expires</th><th>Status</th></tr></thead>
                 <tbody>
-                  {batches.map((b) => (
+                  {batches.filter((b) => !fq.trim() || `${b.medicine?.name} ${b.batch_no ?? ''}`.toLowerCase().includes(fq.trim().toLowerCase())).map((b) => (
                     <tr key={b.id}>
                       <td>{b.medicine?.name}</td>
                       <td>{b.batch_no || '—'}</td>

@@ -8,14 +8,16 @@ import PatientForm from './PatientForm.jsx';
 
 const PAGE = 15;
 
+const listName = (p) => `${p.last_name ?? ''}, ${[p.first_name, p.middle_name, p.suffix].filter(Boolean).join(' ')}`;
 const byName = (a, b) => (a.last_name ?? '').localeCompare(b.last_name ?? '') || (a.first_name ?? '').localeCompare(b.first_name ?? '');
 
 /** Master Patient List: patients + their website accounts in one list.
- *  Patients with no type yet come first, then A-Z by surname. Deactivated accounts move to their own list below. */
+ *  A-Z by surname. Deactivated accounts move to their own list below. */
 export default function PatientList() {
   const { role } = useAuth();
   const isAdmin = role === 'admin';
   const [q, setQ] = useState('');
+  const [grp, setGrp] = useState('all');
   const [all, setAll] = useState([]);
   const [accts, setAccts] = useState({});
   const [msg, setMsg] = useState(null);
@@ -51,13 +53,20 @@ export default function PatientList() {
   }
 
   const term = q.replace(/[,()%*]/g, ' ').trim().toLowerCase();
-  const matches = (p) => !term || `${p.first_name} ${p.last_name} ${p.medical_id ?? ''} ${p.purok ?? ''}`.toLowerCase().includes(term);
+  const inGroup = (p) => {
+    if (grp === 'all') return true;
+    if (grp === 'notype') return !p.patient_type;
+    const a = calcAge(p.birth_date);
+    if (typeof a !== 'number') return false;
+    return grp === 'infant' ? a < 1 : grp === 'child' ? a >= 1 && a <= 17 : grp === 'adult' ? a >= 18 && a <= 59 : a >= 60;
+  };
+  const matches = (p) => inGroup(p) && (!term || `${p.first_name} ${p.last_name} ${p.medical_id ?? ''} ${p.purok ?? ''}`.toLowerCase().includes(term));
   const acctOf = (p) => (p.profile_id ? accts[p.profile_id] : null);
   const visible = all.filter((p) => acctOf(p)?.approval_status !== 'pending' && matches(p));
   const isOff = (p) => { const a = acctOf(p); return a && a.approval_status === 'approved' && a.is_active === false; };
   const deactivated = visible.filter(isOff).sort(byName);
   const active = visible.filter((p) => !isOff(p));
-  const rows = [...active.filter((p) => !p.patient_type).sort(byName), ...active.filter((p) => p.patient_type).sort(byName)];
+  const rows = [...active].sort(byName);
   const total = rows.length;
   const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
 
@@ -74,8 +83,16 @@ export default function PatientList() {
   return (
     <>
     <div className="panel-card">
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h5 className="mb-0">Master Patient List <span className="badge bg-success ms-1">{total}</span></h5>
+      <h5 className="mb-3">Master Patient List <span className="badge bg-success ms-1">{total}</span></h5>
+      <div className="d-flex gap-2 flex-wrap mb-3">
+        <select className="form-select w-auto" value={grp} onChange={(e) => { setGrp(e.target.value); setPage(0); }}>
+          <option value="all">All ages</option>
+          <option value="infant">Infants (under 1)</option>
+          <option value="child">Children (1–17)</option>
+          <option value="adult">Adults (18–59)</option>
+          <option value="senior">Seniors (60+)</option>
+          <option value="notype">No account type</option>
+        </select>
         <input className="form-control" style={{ maxWidth: 340 }} placeholder="Search name, medical ID (CC-…) or purok"
           value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
       </div>
@@ -89,7 +106,7 @@ export default function PatientList() {
               {pageRows.map((p) => (
                 <tr key={p.id}>
                   <td className="text-nowrap"><code>{p.medical_id}</code></td>
-                  <td><strong>{fullName(p)}</strong>{!p.patient_type && <span className="badge bg-warning text-dark ms-2" title="Open Edit and choose the type of patient">Type not set</span>}
+                  <td><strong>{listName(p)}</strong>{!p.patient_type && <span className="badge bg-warning text-dark ms-2" title="Open Edit and choose the type of patient">Type not set</span>}
                     <div className="small text-secondary">{p.contact_number || ''}</div></td>
                   <td>{calcAge(p.birth_date)}</td>
                   <td>{p.purok}</td>
@@ -146,7 +163,7 @@ export default function PatientList() {
               {deactivated.map((p) => (
                 <tr key={p.id}>
                   <td className="text-nowrap"><code>{p.medical_id}</code></td>
-                  <td><strong>{fullName(p)}</strong><div className="small text-secondary">{p.email || p.contact_number || ''}</div></td>
+                  <td><strong>{listName(p)}</strong><div className="small text-secondary">{p.email || p.contact_number || ''}</div></td>
                   <td>{p.purok}</td>
                   <td className="text-end text-nowrap">
                     <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => setEditing(p)}>Edit</button>
